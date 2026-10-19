@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FDFBF7;
+    color: #2D2520;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/* Devotional Card and Border Utilities */
+.devotional-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E8DCCE;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(45, 37, 32, 0.05);
+}
+
+.devotional-border-gold {
+  border-color: #E0AE18;
+}
+
+.devotional-border-maroon {
+  border-color: #7A1C23;
+}
+
+/* Thermal Receipt 80mm Printing Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #thermal-print-container,
+  #thermal-print-container * {
+    visibility: visible;
+  }
+
+  #thermal-print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 78mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  .ticket-thermal-page {
+    page-break-after: always;
+    page-break-inside: avoid;
+    width: 78mm;
+    margin-bottom: 2mm;
+    padding: 3mm;
+    font-family: monospace, Courier, sans-serif;
+    color: #000000;
+    background: #FFFFFF;
+    border-bottom: 1px dashed #000000;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+}
+

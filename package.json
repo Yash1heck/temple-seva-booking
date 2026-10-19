@@ -1,0 +1,21 @@
+{
+  "name": "temple-seva-booking",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"yellow,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --workspace=backend run dev",
+    "dev:frontend": "npm --workspace=frontend run dev",
+    "build": "npm --workspace=backend run build && npm --workspace=frontend run build",
+    "test": "npm --workspace=backend run test",
+    "migrate": "npm --workspace=backend run migrate",
+    "seed": "npm --workspace=backend run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  }
+}
