@@ -11,7 +11,7 @@ export const BookedSevasPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [filterAllDates, setFilterAllDates] = useState(false);
+  const [filterMode, setFilterMode] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
   const [isLoading, setIsLoading] = useState(true);
 
   // Ticket Modal State
@@ -21,14 +21,18 @@ export const BookedSevasPage: React.FC = () => {
 
   useEffect(() => {
     loadBookings();
-  }, [selectedDate, filterAllDates]);
+  }, [selectedDate, filterMode]);
 
   const loadBookings = async () => {
     setIsLoading(true);
     try {
       let url = `/bookings?search=${encodeURIComponent(search.trim())}&limit=100`;
-      if (!filterAllDates && selectedDate) {
-        url += `&startDate=${selectedDate}&endDate=${selectedDate}`;
+      if (filterMode === 'booking_date') {
+        url += `&bookingDate=${selectedDate}`;
+      } else if (filterMode === 'scheduled_date') {
+        url += `&scheduledDate=${selectedDate}`;
+      } else if (filterMode === 'future_only') {
+        url += `&futureOnly=true`;
       }
       const data = await apiRequest<Booking[]>(url);
       setBookings(data);
@@ -63,7 +67,7 @@ export const BookedSevasPage: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-gray-600 mt-1">
-            Search all bookings, inspect devotee ritual details, and reprint tickets for devotees.
+            Search all bookings, inspect devotee ritual details, filter by booking or scheduled date, and reprint tickets.
           </p>
         </div>
 
@@ -103,30 +107,77 @@ export const BookedSevasPage: React.FC = () => {
           <div className="sm:col-span-4 flex items-center gap-2">
             <input
               type="date"
-              disabled={filterAllDates}
+              disabled={filterMode === 'all' || filterMode === 'future_only'}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded-md text-xs text-[#2D2520] disabled:bg-gray-100 disabled:text-gray-400"
             />
-            <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filterAllDates}
-                onChange={(e) => setFilterAllDates(e.target.checked)}
-                className="rounded border-[#E8DCCE] text-[#7A1C23] focus:ring-[#7A1C23]"
-              />
-              <span>All Dates</span>
-            </label>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded text-xs text-[#7A1C23] hover:bg-[#F3ECE0]"
+            >
+              Today
+            </button>
           </div>
 
           <div className="sm:col-span-2">
             <button
               onClick={loadBookings}
-              className="w-full py-2 bg-[#FAF5EC] hover:bg-[#F3ECE0] border border-[#E8DCCE] text-[#7A1C23] font-bold rounded-lg text-xs transition-colors"
+              className="w-full py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white font-bold rounded-lg text-xs transition-colors"
             >
               Search
             </button>
           </div>
+        </div>
+
+        {/* Filter Pills for Date Modes */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/60">
+          <span className="text-[11px] font-semibold text-gray-500 mr-1">View Mode:</span>
+          <button
+            type="button"
+            onClick={() => setFilterMode('booking_date')}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+              filterMode === 'booking_date'
+                ? 'bg-[#7A1C23] text-white shadow-xs'
+                : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+            }`}
+          >
+            1) Booked on this Date ({selectedDate})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterMode('scheduled_date')}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+              filterMode === 'scheduled_date'
+                ? 'bg-[#7A1C23] text-white shadow-xs'
+                : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+            }`}
+          >
+            2) Scheduled for this Date (Ritual Day)
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterMode('future_only')}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+              filterMode === 'future_only'
+                ? 'bg-[#7A1C23] text-white shadow-xs'
+                : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+            }`}
+          >
+            3) Advance / Future Bookings
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterMode('all')}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+              filterMode === 'all'
+                ? 'bg-[#7A1C23] text-white shadow-xs'
+                : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+            }`}
+          >
+            All Dates
+          </button>
         </div>
       </div>
 
@@ -148,7 +199,8 @@ export const BookedSevasPage: React.FC = () => {
               <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
                 <tr>
                   <th className="py-3 px-4">Booking Ref</th>
-                  <th className="py-3 px-4">Booking Date / Time</th>
+                  <th className="py-3 px-4">Booking Transaction Date</th>
+                  <th className="py-3 px-4">Ritual / Scheduled Date</th>
                   <th className="py-3 px-4">Ritual Beneficiary (కర్త)</th>
                   <th className="py-3 px-4">Gothra (గోత్రం)</th>
                   <th className="py-3 px-4">Family / Sankalpa</th>
@@ -172,6 +224,25 @@ export const BookedSevasPage: React.FC = () => {
                         dateStyle: 'medium',
                         timeStyle: 'short'
                       })}
+                    </td>
+                    <td className="py-3 px-4">
+                      {b.is_advance_booking || b.scheduled_for_date ? (
+                        <div className="space-y-0.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            📅 Scheduled: {b.scheduled_for_date}
+                          </span>
+                          <div className="text-[10px] text-gray-500 font-medium">Advance Booking</div>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          ⚡ Same-Day Pooja
+                        </span>
+                      )}
+                      {b.items_summary && b.items_summary.length > 0 && (
+                        <div className="text-[10px] text-gray-500 truncate max-w-[180px] mt-0.5">
+                          {b.items_summary.map(i => `${i.seva_name} (${i.quantity})`).join(', ')}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-[#2D2520]">{b.ritual_beneficiary_name}</div>
@@ -227,3 +298,4 @@ export const BookedSevasPage: React.FC = () => {
     </div>
   );
 };
+

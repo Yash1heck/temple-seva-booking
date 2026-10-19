@@ -70,6 +70,9 @@ export interface Booking {
   payment_method?: string;
   payment_status?: string;
   ticket_count?: number;
+  items_summary?: { seva_name: string; quantity: number; scheduled_date: string | null }[];
+  is_advance_booking?: boolean;
+  scheduled_for_date?: string | null;
 }
 
 export interface PoojariAssignmentSummary {

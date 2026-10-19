@@ -53,6 +53,9 @@ export async function bookingRoutes(fastify: FastifyInstance) {
     const bookings = await BookingService.listBookings({
       startDate: query.startDate,
       endDate: query.endDate,
+      bookingDate: query.bookingDate,
+      scheduledDate: query.scheduledDate,
+      futureOnly: query.futureOnly === 'true',
       search: query.search,
       status: query.status,
       paymentStatus: query.paymentStatus,

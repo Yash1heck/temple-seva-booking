@@ -320,6 +320,9 @@ export class BookingService {
   static async listBookings(options: {
     startDate?: string;
     endDate?: string;
+    bookingDate?: string;
+    scheduledDate?: string;
+    futureOnly?: boolean;
     search?: string;
     status?: string;
     paymentStatus?: string;
@@ -330,13 +333,61 @@ export class BookingService {
     let query = `
       SELECT b.*,
              p.payment_method, p.payment_status, p.transaction_reference,
-             (SELECT COUNT(*)::int FROM tickets t WHERE t.booking_id = b.id) as ticket_count
+             (SELECT COUNT(*)::int FROM tickets t WHERE t.booking_id = b.id) as ticket_count,
+             (
+               SELECT json_agg(json_build_object(
+                 'seva_name', bi.seva_name_snapshot,
+                 'quantity', bi.quantity,
+                 'scheduled_date', bi.scheduled_date_snapshot
+               ))
+               FROM booking_items bi
+               WHERE bi.booking_id = b.id
+             ) as items_summary,
+             (
+               SELECT bool_or(bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot > b.created_at::date)
+               FROM booking_items bi
+               WHERE bi.booking_id = b.id
+             ) as is_advance_booking,
+             (
+               SELECT MIN(bi.scheduled_date_snapshot)::text
+               FROM booking_items bi
+               WHERE bi.booking_id = b.id AND bi.scheduled_date_snapshot IS NOT NULL
+             ) as scheduled_for_date
       FROM bookings b
       LEFT JOIN payments p ON p.booking_id = b.id
     `;
 
     const conditions: string[] = [];
     const params: any[] = [];
+
+    // Filter by counter booking date (transaction date)
+    if (options.bookingDate) {
+      params.push(options.bookingDate);
+      conditions.push(`b.created_at::date = $${params.length}::date`);
+    }
+
+    // Filter by ritual scheduled date (even if booked on an earlier date!)
+    if (options.scheduledDate) {
+      params.push(options.scheduledDate);
+      conditions.push(`EXISTS (
+        SELECT 1 FROM booking_items bi
+        WHERE bi.booking_id = b.id
+          AND (
+            (bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot = $${params.length}::date)
+            OR (bi.scheduled_date_snapshot IS NULL AND b.created_at::date = $${params.length}::date)
+          )
+      )`);
+    }
+
+    // Filter for future advance bookings
+    if (options.futureOnly) {
+      conditions.push(`EXISTS (
+        SELECT 1 FROM booking_items bi
+        WHERE bi.booking_id = b.id
+          AND bi.scheduled_date_snapshot IS NOT NULL
+          AND bi.scheduled_date_snapshot > CURRENT_DATE
+      )`);
+    }
 
     if (options.startDate) {
       params.push(options.startDate);

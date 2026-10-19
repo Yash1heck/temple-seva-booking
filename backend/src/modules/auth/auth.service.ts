@@ -17,7 +17,7 @@ export class AuthService {
     const res = await db.query(
       `SELECT id, username, name, role, password_hash, is_active, created_at, updated_at
        FROM staff_users
-       WHERE username = $1`,
+       WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))`,
       [username]
     );
     if (res.rows.length === 0) return null;

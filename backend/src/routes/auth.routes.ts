@@ -16,7 +16,8 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parseResult.error.errors[0].message });
     }
 
-    const { username, password } = parseResult.data;
+    const username = parseResult.data.username.trim();
+    const password = parseResult.data.password.trim();
     const user = await AuthService.findByUsername(username);
 
     if (!user || !user.is_active) {

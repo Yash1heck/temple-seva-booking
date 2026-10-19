@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Seva, Booking, User, Ticket } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { TicketPrintModal } from '../components/TicketPrintModal.js';
+import { UpiQrCode } from '../components/UpiQrCode.js';
 import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
   Lock, RefreshCw, FileText, Settings, History, CheckSquare,
-  Edit, X
+  Edit, X, QrCode
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -14,10 +15,27 @@ export const AdminDashboardPage: React.FC = () => {
 
   // Overview Data
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bookingFilterType, setBookingFilterType] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
   const [todaySummary, setTodaySummary] = useState<any>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchBooking, setSearchBooking] = useState('');
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+
+  // Settings State
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [upiForm, setUpiForm] = useState({
+    merchant_name: '',
+    upi_id: '',
+    verification_instruction: ''
+  });
+  const [isEditingTempleInfo, setIsEditingTempleInfo] = useState(false);
+  const [templeInfoForm, setTempleInfoForm] = useState({
+    name: '',
+    telugu_name: '',
+    address: '',
+    contact_phone: '',
+    tagline: ''
+  });
 
   // Sevas Management
   const [sevas, setSevas] = useState<Seva[]>([]);
@@ -90,6 +108,9 @@ export const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     loadOverview();
+  }, [reportDate, bookingFilterType]);
+
+  useEffect(() => {
     loadSevas();
     loadUsers();
     loadSettings();
@@ -99,16 +120,27 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       const summary = await apiRequest(`/reports/summary?startDate=${reportDate}&endDate=${reportDate}`);
       setTodaySummary(summary);
-      loadBookings();
+      loadBookings(bookingFilterType, reportDate);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const loadBookings = async () => {
+  const loadBookings = async (
+    filterType: 'booking_date' | 'scheduled_date' | 'future_only' | 'all' = bookingFilterType,
+    targetDate: string = reportDate
+  ) => {
     setIsLoadingBookings(true);
     try {
-      const list = await apiRequest<Booking[]>(`/bookings?search=${encodeURIComponent(searchBooking)}&limit=50`);
+      let url = `/bookings?search=${encodeURIComponent(searchBooking)}&limit=100`;
+      if (filterType === 'booking_date') {
+        url += `&bookingDate=${targetDate}`;
+      } else if (filterType === 'scheduled_date') {
+        url += `&scheduledDate=${targetDate}`;
+      } else if (filterType === 'future_only') {
+        url += `&futureOnly=true`;
+      }
+      const list = await apiRequest<Booking[]>(url);
       setBookings(list);
     } catch (err) {
       console.error(err);
@@ -140,8 +172,54 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       const s = await apiRequest('/settings');
       setTempleSettings(s);
+      if (s?.upi_config) {
+        setUpiForm({
+          merchant_name: s.upi_config.merchant_name || '',
+          upi_id: s.upi_config.upi_id || '',
+          verification_instruction: s.upi_config.verification_instruction || ''
+        });
+      }
+      if (s?.temple_info) {
+        setTempleInfoForm({
+          name: s.temple_info.name || '',
+          telugu_name: s.temple_info.telugu_name || '',
+          address: s.temple_info.address || '',
+          contact_phone: s.temple_info.contact_phone || '',
+          tagline: s.temple_info.tagline || ''
+        });
+      }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSaveUpiConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiRequest('/settings/upi_config', {
+        method: 'PUT',
+        body: JSON.stringify(upiForm)
+      });
+      alert('Temple UPI Merchant Details updated successfully!');
+      setIsEditingUpi(false);
+      loadSettings();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update UPI settings');
+    }
+  };
+
+  const handleSaveTempleInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiRequest('/settings/temple_info', {
+        method: 'PUT',
+        body: JSON.stringify(templeInfoForm)
+      });
+      alert('Temple Identity & Contact Details updated successfully!');
+      setIsEditingTempleInfo(false);
+      loadSettings();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update temple details');
     }
   };
 
@@ -475,35 +553,110 @@ export const AdminDashboardPage: React.FC = () => {
       {/* TAB 1: BOOKINGS & OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded-xl border border-[#E8DCCE] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-96">
-              <input
-                type="text"
-                placeholder="Search by Booking #, Beneficiary, Mobile, Gothra..."
-                value={searchBooking}
-                onChange={(e) => setSearchBooking(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
-                className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/50 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B]"
-              />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+          {/* Booking Filters Bar */}
+          <div className="bg-white p-4 rounded-xl border border-[#E8DCCE] shadow-sm space-y-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Search input */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by Booking #, Beneficiary, Mobile, Gothra..."
+                  value={searchBooking}
+                  onChange={(e) => setSearchBooking(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
+                  className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/50 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B]"
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              </div>
+
+              {/* Date selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#7A1C23] whitespace-nowrap uppercase">
+                  Target Date:
+                </span>
+                <input
+                  type="date"
+                  value={reportDate}
+                  onChange={(e) => setReportDate(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded-md text-xs font-medium text-[#2D2520]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setReportDate(new Date().toISOString().split('T')[0])}
+                  className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded text-xs font-semibold text-[#7A1C23] hover:bg-[#F3ECE0]"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => loadBookings()}
+                  className="px-3 py-1.5 bg-[#7A1C23] text-white rounded-md text-xs font-semibold hover:bg-[#5C1217]"
+                >
+                  Search
+                </button>
+              </div>
             </div>
-            <button
-              onClick={loadBookings}
-              className="px-4 py-2 bg-[#7A1C23] text-white rounded-md text-xs font-semibold hover:bg-[#5C1217]"
-            >
-              Search Bookings
-            </button>
+
+            {/* Filter Pills for Date Modes */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/60">
+              <span className="text-[11px] font-semibold text-gray-500 mr-1">View Mode:</span>
+              <button
+                type="button"
+                onClick={() => setBookingFilterType('booking_date')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  bookingFilterType === 'booking_date'
+                    ? 'bg-[#7A1C23] text-white shadow-xs'
+                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                }`}
+              >
+                1) Bookings Done on {reportDate} (Transaction Date)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingFilterType('scheduled_date')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  bookingFilterType === 'scheduled_date'
+                    ? 'bg-[#7A1C23] text-white shadow-xs'
+                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                }`}
+              >
+                2) Rituals Scheduled for {reportDate} (Even if booked earlier)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingFilterType('future_only')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  bookingFilterType === 'future_only'
+                    ? 'bg-[#7A1C23] text-white shadow-xs'
+                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                }`}
+              >
+                3) Advance / Future Scheduled Bookings
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingFilterType('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  bookingFilterType === 'all'
+                    ? 'bg-[#7A1C23] text-white shadow-xs'
+                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                }`}
+              >
+                All Bookings
+              </button>
+            </div>
           </div>
 
+          {/* Bookings Table */}
           <div className="bg-white rounded-xl border border-[#E8DCCE] shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
                   <tr>
                     <th className="py-3 px-4">Booking Ref</th>
-                    <th className="py-3 px-4">Date / Time</th>
+                    <th className="py-3 px-4">Booking Transaction Date</th>
+                    <th className="py-3 px-4">Ritual / Scheduled Date</th>
                     <th className="py-3 px-4">Ritual Beneficiary (కర్త)</th>
-                    <th className="py-3 px-4">Gothra</th>
+                    <th className="py-3 px-4">Gothra (గోత్రం)</th>
                     <th className="py-3 px-4">Amount</th>
                     <th className="py-3 px-4">Payment</th>
                     <th className="py-3 px-4">Status</th>
@@ -520,8 +673,28 @@ export const AdminDashboardPage: React.FC = () => {
                       <td className="py-3 px-4 text-gray-600">
                         {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
                       </td>
-                      <td className="py-3 px-4 font-medium text-[#2D2520]">
-                        {b.ritual_beneficiary_name}
+                      <td className="py-3 px-4">
+                        {b.is_advance_booking || b.scheduled_for_date ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              📅 Scheduled: {b.scheduled_for_date}
+                            </span>
+                            <div className="text-[10px] text-gray-500 font-medium">Advance Booking</div>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            ⚡ Same-Day Pooja
+                          </span>
+                        )}
+                        {b.items_summary && b.items_summary.length > 0 && (
+                          <div className="text-[10px] text-gray-500 truncate max-w-[180px] mt-0.5">
+                            {b.items_summary.map(i => `${i.seva_name} (${i.quantity})`).join(', ')}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-[#2D2520]">{b.ritual_beneficiary_name}</div>
+                        {b.payer_mobile && <div className="text-[10px] text-gray-400">📱 {b.payer_mobile}</div>}
                       </td>
                       <td className="py-3 px-4 font-semibold text-[#C86A1B]">
                         {b.gothra}
@@ -1403,25 +1576,284 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* TAB 8: SETTINGS */}
       {activeTab === 'settings' && templeSettings && (
-        <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl border border-[#E8DCCE] shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-[#7A1C23] flex items-center gap-2 border-b pb-3">
-            <Settings className="w-5 h-5 text-[#C86A1B]" />
-            Temple Identity & Operational Settings
-          </h2>
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-[#7A1C23] flex items-center gap-2">
+                <Settings className="w-5 h-5 text-[#C86A1B]" />
+                Temple Identity & Merchant UPI Configuration
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Manage temple identity display headers, official merchant UPI ID, and counter payment QR codes.
+              </p>
+            </div>
+          </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="p-3 bg-[#FAF5EC] rounded border border-[#E8DCCE] space-y-1">
-              <div className="font-bold text-[#7A1C23]">Temple Name:</div>
-              <div>{templeSettings.temple_info?.name}</div>
-              <div className="text-[#C86A1B] font-serif">{templeSettings.temple_info?.telugu_name}</div>
-              <div className="text-gray-500">{templeSettings.temple_info?.address}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            {/* CARD 1: MERCHANT UPI CONFIGURATION */}
+            <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-3">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-[#C86A1B]" />
+                  <h3 className="font-bold text-sm text-[#7A1C23]">Merchant UPI Settings</h3>
+                </div>
+                {!isEditingUpi && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingUpi(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold hover:bg-[#F3ECE0]"
+                  >
+                    <Edit className="w-3 h-3 text-[#C86A1B]" />
+                    Edit UPI Details
+                  </button>
+                )}
+              </div>
+
+              {isEditingUpi ? (
+                <form onSubmit={handleSaveUpiConfig} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Merchant Display Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={upiForm.merchant_name}
+                      onChange={(e) => setUpiForm({ ...upiForm, merchant_name: e.target.value })}
+                      placeholder="e.g. SRI SRINGERI SHARADA PEETHAM TEMPLE"
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      UPI ID / VPA (Virtual Payment Address) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={upiForm.upi_id}
+                      onChange={(e) => setUpiForm({ ...upiForm, upi_id: e.target.value })}
+                      placeholder="e.g. sringeri.temple@sbi"
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 font-mono text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      Payments will be routed directly to this temple bank account.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Counter Verification Instructions
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={upiForm.verification_instruction}
+                      onChange={(e) => setUpiForm({ ...upiForm, verification_instruction: e.target.value })}
+                      placeholder="e.g. Verify confirmation on temple soundbox or merchant SMS before issuing tickets."
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Live QR Preview during edit */}
+                  {upiForm.upi_id && (
+                    <div className="pt-2 border-t border-gray-100 flex flex-col items-center">
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                        Live Scannable QR Code Preview
+                      </div>
+                      <UpiQrCode
+                        upiId={upiForm.upi_id}
+                        merchantName={upiForm.merchant_name || 'Temple Merchant'}
+                        amount={100}
+                        transactionNote="Sample Seva Booking Verification"
+                        size={150}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-[#E8DCCE]">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingUpi(false)}
+                      className="px-3 py-1.5 border border-[#E8DCCE] rounded text-gray-600 bg-white hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded font-semibold shadow-xs"
+                    >
+                      Save UPI Configuration
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4 text-xs">
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200/80 space-y-1.5 text-gray-800">
+                    <div>
+                      <span className="font-semibold text-gray-600">Merchant Name:</span>{' '}
+                      <strong className="text-[#7A1C23]">{templeSettings.upi_config?.merchant_name}</strong>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-600">UPI ID / VPA:</span>{' '}
+                      <span className="font-mono font-bold text-amber-950 bg-white px-2 py-0.5 rounded border border-amber-300">
+                        {templeSettings.upi_config?.upi_id}
+                      </span>
+                    </div>
+                    {templeSettings.upi_config?.verification_instruction && (
+                      <div className="text-[11px] text-gray-600 pt-1 border-t border-amber-200/60">
+                        <strong>Counter Instruction:</strong> {templeSettings.upi_config.verification_instruction}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scannable Counter QR Code Display */}
+                  <div className="flex flex-col items-center">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      Active Counter QR Code
+                    </div>
+                    <UpiQrCode
+                      upiId={templeSettings.upi_config?.upi_id || 'sringeri.temple@sbi'}
+                      merchantName={templeSettings.upi_config?.merchant_name || 'Sri Sharada Peetham Temple'}
+                      amount={200}
+                      transactionNote="Sample Seva Verification"
+                      size={160}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="p-3 bg-amber-50 rounded border border-amber-200 space-y-1">
-              <div className="font-bold text-amber-900">Configured Merchant UPI:</div>
-              <div>Merchant: <strong>{templeSettings.upi_config?.merchant_name}</strong></div>
-              <div>UPI VPA: <span className="font-mono">{templeSettings.upi_config?.upi_id}</span></div>
-              <div className="text-gray-600">{templeSettings.upi_config?.verification_instruction}</div>
+            {/* CARD 2: TEMPLE IDENTITY & CONTACTS */}
+            <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#C86A1B]" />
+                  <h3 className="font-bold text-sm text-[#7A1C23]">Temple Identity</h3>
+                </div>
+                {!isEditingTempleInfo && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTempleInfo(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold hover:bg-[#F3ECE0]"
+                  >
+                    <Edit className="w-3 h-3 text-[#C86A1B]" />
+                    Edit Details
+                  </button>
+                )}
+              </div>
+
+              {isEditingTempleInfo ? (
+                <form onSubmit={handleSaveTempleInfo} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Temple Official Name (English) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={templeInfoForm.name}
+                      onChange={(e) => setTempleInfoForm({ ...templeInfoForm, name: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Telugu Name (శ్రీ శారదా పీఠం సన్నిధానం)
+                    </label>
+                    <input
+                      type="text"
+                      value={templeInfoForm.telugu_name}
+                      onChange={(e) => setTempleInfoForm({ ...templeInfoForm, telugu_name: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] font-serif focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Mutt Tagline / Peetham Tradition
+                    </label>
+                    <input
+                      type="text"
+                      value={templeInfoForm.tagline}
+                      onChange={(e) => setTempleInfoForm({ ...templeInfoForm, tagline: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Temple Address
+                    </label>
+                    <input
+                      type="text"
+                      value={templeInfoForm.address}
+                      onChange={(e) => setTempleInfoForm({ ...templeInfoForm, address: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={templeInfoForm.contact_phone}
+                      onChange={(e) => setTempleInfoForm({ ...templeInfoForm, contact_phone: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-[#E8DCCE] rounded bg-[#FAF5EC]/40 text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-[#E8DCCE]">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTempleInfo(false)}
+                      className="px-3 py-1.5 border border-[#E8DCCE] rounded text-gray-600 bg-white hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded font-semibold shadow-xs"
+                    >
+                      Save Temple Identity
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-3 text-xs">
+                  <div className="p-3.5 bg-[#FAF5EC] rounded-lg border border-[#E8DCCE] space-y-1.5 text-gray-800">
+                    <div>
+                      <span className="font-semibold text-gray-500">Official Name:</span>
+                      <div className="font-bold text-sm text-[#7A1C23]">{templeSettings.temple_info?.name}</div>
+                    </div>
+                    {templeSettings.temple_info?.telugu_name && (
+                      <div>
+                        <span className="font-semibold text-gray-500">శ్రీ నామం:</span>
+                        <div className="text-[#C86A1B] font-serif text-sm">{templeSettings.temple_info.telugu_name}</div>
+                      </div>
+                    )}
+                    {templeSettings.temple_info?.tagline && (
+                      <div className="text-[11px] text-gray-600 italic">
+                        {templeSettings.temple_info.tagline}
+                      </div>
+                    )}
+                    {templeSettings.temple_info?.address && (
+                      <div className="text-[11px] text-gray-600 pt-1 border-t border-[#E8DCCE]">
+                        📍 {templeSettings.temple_info.address}
+                      </div>
+                    )}
+                    {templeSettings.temple_info?.contact_phone && (
+                      <div className="text-[11px] text-gray-600">
+                        📞 {templeSettings.temple_info.contact_phone}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

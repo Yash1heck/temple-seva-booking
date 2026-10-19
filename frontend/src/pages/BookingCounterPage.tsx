@@ -4,6 +4,7 @@ import { apiRequest } from '../api/client.js';
 import { DevoteeLookup } from '../components/DevoteeLookup.js';
 import { GothraSelector } from '../components/GothraSelector.js';
 import { TicketPrintModal } from '../components/TicketPrintModal.js';
+import { UpiQrCode } from '../components/UpiQrCode.js';
 import {
   Search, Plus, Minus, Trash2, ShoppingBag, CheckCircle,
   QrCode, Banknote, AlertTriangle, Sparkles, RefreshCw, Calendar
@@ -518,15 +519,37 @@ export const BookingCounterPage: React.FC = () => {
 
               {/* UPI Verification Panel */}
               {paymentMethod === 'upi' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2.5 text-xs text-[#2D2520]">
-                  <div className="font-semibold text-amber-900 flex items-center gap-1.5">
-                    <QrCode className="w-4 h-4 text-amber-700" />
-                    Temple Counter Merchant QR
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-3 text-xs text-[#2D2520]">
+                  <div className="font-semibold text-amber-900 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <QrCode className="w-4 h-4 text-amber-700" />
+                      Temple Counter Merchant UPI QR
+                    </span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-mono font-bold">
+                      {templeUpiConfig?.upi_id || 'sringeri.temple@sbi'}
+                    </span>
                   </div>
+
+                  {/* Dynamic Scannable QR Code */}
+                  {cartTotal > 0 && (
+                    <div className="flex justify-center py-1">
+                      <UpiQrCode
+                        upiId={templeUpiConfig?.upi_id || 'sringeri.temple@sbi'}
+                        merchantName={templeUpiConfig?.merchant_name || 'Sri Sharada Peetham Temple'}
+                        amount={cartTotal}
+                        transactionNote={`Seva Cart - ${beneficiaryName || 'Devotee'}`}
+                        size={175}
+                      />
+                    </div>
+                  )}
+
                   {templeUpiConfig ? (
-                    <div className="text-[11px] text-gray-700 space-y-0.5">
+                    <div className="text-[11px] text-gray-700 bg-white/70 p-2 rounded border border-amber-200 space-y-0.5">
                       <div><strong>Merchant:</strong> {templeUpiConfig.merchant_name}</div>
-                      <div><strong>UPI VPA:</strong> <span className="font-mono">{templeUpiConfig.upi_id}</span></div>
+                      <div><strong>UPI VPA:</strong> <span className="font-mono font-bold text-[#7A1C23]">{templeUpiConfig.upi_id}</span></div>
+                      {templeUpiConfig.verification_instruction && (
+                        <div className="text-[10px] text-gray-500 italic mt-0.5">{templeUpiConfig.verification_instruction}</div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-[11px] text-gray-500 italic">
@@ -555,7 +578,7 @@ export const BookingCounterPage: React.FC = () => {
                       onChange={(e) => setPaymentStatus(e.target.checked ? 'confirmed' : 'pending')}
                       className="rounded border-amber-400 text-[#7A1C23] focus:ring-[#7A1C23]"
                     />
-                    <label htmlFor="upiConfirmedCheck" className="text-[11px] text-gray-800 font-medium">
+                    <label htmlFor="upiConfirmedCheck" className="text-[11px] text-gray-800 font-medium cursor-pointer">
                       Payment confirmed on temple soundbox / merchant notification
                     </label>
                   </div>
