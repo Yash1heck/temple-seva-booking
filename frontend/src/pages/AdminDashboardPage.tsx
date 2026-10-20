@@ -1,6 +1,7 @@
 import { getTempleToday, getTempleTomorrow } from '../utils/date.js';
 import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
+import { toTeluguSevaName } from '../utils/teluguTransliteration.js';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Seva, Booking, User, Ticket } from '../types.js';
 import { apiRequest } from '../api/client.js';
@@ -363,10 +364,12 @@ export const AdminDashboardPage: React.FC = () => {
     if (isCreatingSevaLoading) return;
     setIsCreatingSevaLoading(true);
     try {
+      const teluguNameToSave = newSeva.telugu_name.trim() || toTeluguSevaName(newSeva.name);
       await apiRequest('/sevas', {
         method: 'POST',
         body: JSON.stringify({
           ...newSeva,
+          telugu_name: teluguNameToSave,
           scheduled_date: newSeva.is_scheduled ? newSeva.scheduled_date : null
         })
       });
@@ -422,10 +425,12 @@ export const AdminDashboardPage: React.FC = () => {
     e.preventDefault();
     if (!editingSeva) return;
     try {
+      const teluguNameToSave = editingSevaForm.telugu_name.trim() || toTeluguSevaName(editingSevaForm.name);
       await apiRequest(`/sevas/${editingSeva.id}`, {
         method: 'PUT',
         body: JSON.stringify({
           ...editingSevaForm,
+          telugu_name: teluguNameToSave,
           scheduled_date: editingSevaForm.is_scheduled ? editingSevaForm.scheduled_date : null
         })
       });
@@ -1053,19 +1058,38 @@ export const AdminDashboardPage: React.FC = () => {
                     type="text"
                     required
                     value={newSeva.name}
-                    onChange={(e) => setNewSeva({ ...newSeva, name: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewSeva(prev => ({
+                        ...prev,
+                        name: val,
+                        telugu_name: (!prev.telugu_name || prev.telugu_name === toTeluguSevaName(prev.name))
+                          ? toTeluguSevaName(val)
+                          : prev.telugu_name
+                      }));
+                    }}
                     className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
                     placeholder="e.g. Sahasra Deepalankarana Seva"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">తెలుగు పేరు (శ్రీ నామం)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold">తెలుగు పేరు (శ్రీ నామం)</label>
+                    <button
+                      type="button"
+                      onClick={() => setNewSeva(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }))}
+                      className="text-[11px] text-[#7A1C23] hover:underline font-bold"
+                      title="ఆంగ్ల పేరు ఆధారంగా తెలుగులోకి మార్చండి"
+                    >
+                      తెలుగులోకి మార్చు (Auto-Translate)
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={newSeva.telugu_name}
                     onChange={(e) => setNewSeva({ ...newSeva, telugu_name: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
+                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40 font-serif"
                     placeholder="e.g. సహస్ర దీపాలంకరణ సేవ"
                   />
                 </div>
@@ -1369,18 +1393,37 @@ export const AdminDashboardPage: React.FC = () => {
                       type="text"
                       required
                       value={editingSevaForm.name}
-                      onChange={(e) => setEditingSevaForm({ ...editingSevaForm, name: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditingSevaForm(prev => ({
+                          ...prev,
+                          name: val,
+                          telugu_name: (!prev.telugu_name || prev.telugu_name === toTeluguSevaName(prev.name))
+                            ? toTeluguSevaName(val)
+                            : prev.telugu_name
+                        }));
+                      }}
                       className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-semibold mb-1">తెలుగు పేరు (శ్రీ నామం)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold">తెలుగు పేరు (శ్రీ నామం)</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditingSevaForm(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }))}
+                        className="text-[11px] text-[#7A1C23] hover:underline font-bold"
+                        title="ఆంగ్ల పేరు ఆధారంగా తెలుగులోకి మార్చండి"
+                      >
+                        తెలుగులోకి మార్చు (Auto-Translate)
+                      </button>
+                    </div>
                     <input
                       type="text"
                       value={editingSevaForm.telugu_name}
                       onChange={(e) => setEditingSevaForm({ ...editingSevaForm, telugu_name: e.target.value })}
-                      className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
+                      className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40 font-serif"
                     />
                   </div>
 

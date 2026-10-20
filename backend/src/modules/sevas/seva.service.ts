@@ -1,4 +1,5 @@
 import { getDb, IDatabaseClient } from '../../db/index.js';
+import { toTeluguSevaName } from '../../utils/teluguTransliteration.js';
 
 export interface Seva {
   id: string;
@@ -148,6 +149,10 @@ export class SevaService {
       };
     }
 
+    const teluguName = (data.telugu_name && data.telugu_name.trim().length > 0)
+      ? data.telugu_name.trim()
+      : toTeluguSevaName(trimmedName);
+
     const res = await db.query(
       `INSERT INTO sevas (name, telugu_name, description, category, price, is_active, is_scheduled, scheduled_date, timing)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -156,7 +161,7 @@ export class SevaService {
                  created_at, updated_at`,
       [
         trimmedName,
-        data.telugu_name?.trim() || null,
+        teluguName || null,
         data.description?.trim() || null,
         data.category?.trim() || 'Daily Pooja',
         data.price,
@@ -208,7 +213,9 @@ export class SevaService {
     }
 
     const name = data.name !== undefined ? data.name.trim() : existing.name;
-    const telugu_name = data.telugu_name !== undefined ? data.telugu_name?.trim() || null : existing.telugu_name;
+    const telugu_name = (data.telugu_name !== undefined && data.telugu_name !== null && data.telugu_name.trim().length > 0)
+      ? data.telugu_name.trim()
+      : (existing.telugu_name || toTeluguSevaName(name));
     const description = data.description !== undefined ? data.description?.trim() || null : existing.description;
     const category = data.category !== undefined ? data.category.trim() : existing.category;
     const price = data.price !== undefined ? data.price : existing.price;
