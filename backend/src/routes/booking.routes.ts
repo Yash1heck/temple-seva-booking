@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { BookingService } from '../modules/bookings/booking.service.js';
 import { requireRole } from '../middleware/auth.js';
+import { sanitizeText, validateDevoteeName, validateGothram, validateMobile } from '../utils/security.js';
 
 export async function bookingRoutes(fastify: FastifyInstance) {
   // Create Booking
@@ -10,7 +11,8 @@ export async function bookingRoutes(fastify: FastifyInstance) {
       seva_id: z.string().uuid(),
       quantity: z.number().int().min(1).default(1),
       ritual_beneficiary_name: z.string().optional(),
-      gothra: z.string().optional()
+      gothra: z.string().optional(),
+      scheduled_date: z.string().optional().nullable()
     });
 
     const createSchema = z.object({
@@ -36,11 +38,33 @@ export async function bookingRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: parsed.error.errors[0].message });
     }
 
+    // Security Guards: Validate against malformed & malicious payloads
+    const nameCheck = validateDevoteeName(parsed.data.ritual_beneficiary_name);
+    if (!nameCheck.valid) {
+      return reply.status(400).send({ error: nameCheck.error });
+    }
+
+    const gothraCheck = validateGothram(parsed.data.gothra);
+    if (!gothraCheck.valid) {
+      return reply.status(400).send({ error: gothraCheck.error });
+    }
+
+    const mobileCheck = validateMobile(parsed.data.payer_mobile);
+    if (!mobileCheck.valid) {
+      return reply.status(400).send({ error: mobileCheck.error });
+    }
+
     try {
-      const result = await BookingService.createBooking({
+      const sanitizedPayload = {
         ...parsed.data,
+        ritual_beneficiary_name: sanitizeText(parsed.data.ritual_beneficiary_name),
+        gothra: sanitizeText(parsed.data.gothra),
+        payer_name: parsed.data.payer_name ? sanitizeText(parsed.data.payer_name) : null,
+        payer_mobile: parsed.data.payer_mobile ? parsed.data.payer_mobile.trim() : null,
+        family_details: parsed.data.family_details ? sanitizeText(parsed.data.family_details).slice(0, 250) : null,
         created_by_id: request.user!.id
-      });
+      };
+      const result = await BookingService.createBooking(sanitizedPayload);
       return reply.status(201).send(result);
     } catch (err: any) {
       return reply.status(400).send({ error: err.message });

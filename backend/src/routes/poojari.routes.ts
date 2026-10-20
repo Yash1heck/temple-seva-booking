@@ -1,3 +1,4 @@
+import { getTempleToday } from '../utils/date.js';
 import { FastifyInstance } from 'fastify';
 import { PoojariService } from '../modules/poojari/poojari.service.js';
 import { requireRole } from '../middleware/auth.js';
@@ -20,7 +21,7 @@ export async function poojariRoutes(fastify: FastifyInstance) {
       targetPoojariId = query.poojariId;
     }
 
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate = getTempleToday();
     const targetDate = query.date || todayDate;
     const isBoard = query.board === 'true' || query.all === 'true';
 

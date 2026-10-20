@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
-import { Lock, User as UserIcon, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, User as UserIcon, AlertCircle, Sparkles } from 'lucide-react';
+import { playTempleBell } from '../utils/templeAudio.js';
 
 export const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('staff');
@@ -19,6 +20,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       const loggedUser = await login(username, password);
+      // Play authentic 3-second temple bell chime
+      playTempleBell(0.6);
       if (loggedUser.role === 'admin') {
         navigate('/admin');
       } else if (loggedUser.role === 'poojari') {
@@ -27,7 +30,7 @@ export const LoginPage: React.FC = () => {
         navigate('/counter');
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'లాగిన్ విఫలమైంది. దయచేసి యూజర్‌నేమ్ మరియు పాస్‌వర్డ్ సరిచూసుకోండి.');
     } finally {
       setIsSubmitting(false);
     }
@@ -40,113 +43,162 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        {/* Sacred Temple Motif */}
-        <div className="mx-auto w-16 h-16 rounded-full bg-[#7A1C23] text-[#FAF5EC] flex items-center justify-center font-serif text-3xl shadow-md border-2 border-[#C86A1B]/40">
-          ॐ
+    <div className="min-h-screen flex flex-col justify-center items-center py-8 px-4 sm:px-6 relative overflow-hidden">
+      {/* Sanctum Glow Aura Background */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(224,174,24,0.15),transparent_70%)]" />
+
+      {/* Main Temple Sanctum Card */}
+      <div className="w-full max-w-md relative z-10 glass-surface p-6 sm:p-8 rounded-[32px] border border-amber-400/50 shadow-[0_15px_45px_-5px_rgba(122,28,35,0.12)]">
+        
+        {/* Sacred Shloka Archway Inscription */}
+        <div className="flex items-center justify-between text-[#7A1C23] font-serif text-[11px] font-bold border-b border-[#E8DCCE]/70 pb-2.5 mb-3 tracking-wider">
+          <span>॥ శ్రీ గురుభ్యో నమః ॥</span>
+          <span>॥ శ్రీ శారదాంబాయై నమః ॥</span>
         </div>
-        <h2 className="mt-4 text-2xl font-bold tracking-tight text-[#7A1C23]">
-          Sri Sharada Peetham Temple
-        </h2>
-        <p className="mt-1 text-xs text-[#C86A1B] font-serif">
-          శ్రీ శారదా పీఠం • శృంగేరి జగద్గురు శంకరాచార్య మహాసంస్థానం
-        </p>
-        <p className="mt-1 text-sm text-gray-600">
-          Devotional Seva Booking & Gothra Recording System
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white py-8 px-6 shadow-md rounded-xl border border-[#E8DCCE] sm:px-10">
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+        {/* Hanging Diyas & Golden Om Relief */}
+        <div className="flex items-center justify-between px-3 my-2">
+          <div className="text-3xl animate-pulse drop-shadow-[0_0_12px_rgba(224,174,24,0.8)]">
+            🪔
+          </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A1C23]">
-                Username
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <UserIcon className="h-4 w-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 text-sm bg-white border border-[#E8DCCE] rounded-md focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520]"
-                  placeholder="Enter username"
-                />
-              </div>
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#E0AE18] via-[#B8860B] to-[#7A1C23] text-white flex items-center justify-center font-serif text-3xl shadow-md border-2 border-amber-300/70 scale-105 transform hover:scale-110 transition-transform">
+            ॐ
+          </div>
+
+          <div className="text-3xl animate-pulse drop-shadow-[0_0_12px_rgba(224,174,24,0.8)]">
+            🪔
+          </div>
+        </div>
+
+        {/* Temple Title & Tradition */}
+        <div className="text-center space-y-1 mb-5">
+          <h1 className="text-lg sm:text-xl font-bold text-[#7A1C23] font-serif tracking-wide leading-tight">
+            శ్రీ శారదా పీఠం దేవస్థానం
+          </h1>
+          <p className="text-xs font-semibold text-[#C86A1B] font-serif">
+            శృంగేరి జగద్గురు శంకరాచార్య మహాసంస్థానం
+          </p>
+          <div className="h-0.5 w-20 bg-gradient-to-r from-transparent via-[#E0AE18] to-transparent mx-auto my-1.5" />
+          <p className="text-[11px] text-gray-600 font-medium">
+            పూజా సేవా కౌంటర్ & సంకల్ప నిర్వహణ ప్రవేశం
+          </p>
+        </div>
+
+        {/* Login Form */}
+        <form className="space-y-3.5" onSubmit={handleSubmit}>
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50/90 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A1C23]">
-                Password
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <Lock className="h-4 w-4" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 text-sm bg-white border border-[#E8DCCE] rounded-md focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520]"
-                  placeholder="Enter password"
-                />
+          <div>
+            <label className="block text-xs font-bold text-[#7A1C23] mb-1 font-serif">
+              వినియోగదారు పేరు (Username)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                <UserIcon className="h-4 w-4" />
               </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-semibold text-white bg-[#7A1C23] hover:bg-[#5C1217] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A1C23] disabled:opacity-50 transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              {isSubmitting ? 'Signing In...' : 'Sign In to Counter'}
-            </button>
-          </form>
-
-          {/* Quick Preset Selector for Easy Testing & Multi-role Access */}
-          <div className="mt-6 pt-5 border-t border-[#E8DCCE]">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center mb-3">
-              Quick Role Presets
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setPreset('staff', 'Staff@Sringeri123')}
-                className="px-2 py-1.5 border border-[#E8DCCE] bg-[#FAF5EC] hover:bg-[#F3ECE0] rounded text-[11px] font-medium text-[#7A1C23] text-center"
-              >
-                Counter Staff
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('admin', 'Admin@Sringeri123')}
-                className="px-2 py-1.5 border border-[#E8DCCE] bg-[#FAF5EC] hover:bg-[#F3ECE0] rounded text-[11px] font-medium text-[#7A1C23] text-center"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('poojari', 'Poojari@Sringeri123')}
-                className="px-2 py-1.5 border border-[#E8DCCE] bg-[#FAF5EC] hover:bg-[#F3ECE0] rounded text-[11px] font-medium text-[#7A1C23] text-center"
-              >
-                Poojari
-              </button>
+              <input
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="block w-full pl-9 pr-3 py-2 text-xs bg-white/90 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold shadow-2xs"
+                placeholder="యూజర్‌నేమ్ నమోదు చేయండి"
+              />
             </div>
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#7A1C23] mb-1 font-serif">
+              రహస్య సంకేతం (Password)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                <Lock className="h-4 w-4" />
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full pl-9 pr-3 py-2 text-xs bg-white/90 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold shadow-2xs"
+                placeholder="పాస్‌వర్డ్ నమోదు చేయండి"
+              />
+            </div>
+          </div>
+
+          {/* Submit Button with Sacred Temple Accent */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-2.5 px-4 rounded-xl shadow-md text-xs font-bold text-white bg-gradient-to-r from-[#7A1C23] via-[#912028] to-[#7A1C23] hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 border border-amber-300/40"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin text-sm">⏳</span>
+                పరిశీలిస్తున్నాము...
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 font-serif">
+                <span>🔔</span>
+                <span>ప్రవేశించుము (Sign In)</span>
+              </span>
+            )}
+          </button>
+        </form>
+
+        {/* Quick Demo Access Roles */}
+        <div className="mt-5 pt-3.5 border-t border-[#E8DCCE]/70">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center mb-2">
+            త్వరిత ప్రవేశం (Quick Role Selection):
+          </p>
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <button
+              type="button"
+              onClick={() => setPreset('staff', 'Staff@Sringeri123')}
+              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
+                username === 'staff'
+                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
+                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
+              }`}
+            >
+              సిబ్బంది (Staff)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreset('poojari', 'Poojari@Sringeri123')}
+              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
+                username === 'poojari'
+                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
+                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
+              }`}
+            >
+              అర్చకులు (Poojari)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreset('admin', 'Admin@Sringeri123')}
+              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
+                username === 'admin'
+                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
+                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
+              }`}
+            >
+              నిర్వాహకులు (Admin)
+            </button>
+          </div>
+        </div>
+
+        {/* Sacred Traditional Benediction */}
+        <div className="mt-4 pt-2 border-t border-[#E8DCCE]/40 text-center text-[10px] text-[#7A1C23] font-serif font-bold">
+          సర్వే జనాః సుఖినో భవంతు • సమస్త సన్మంగళాని భవంతు
         </div>
       </div>
     </div>
   );
 };
-

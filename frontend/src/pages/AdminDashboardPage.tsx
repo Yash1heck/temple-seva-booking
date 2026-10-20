@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { getTempleToday, getTempleTomorrow } from '../utils/date.js';
+import { formatCurrency } from '../utils/format.js';
+import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Seva, Booking, User, Ticket } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { TicketPrintModal } from '../components/TicketPrintModal.js';
+import { RitualScheduleView } from '../components/RitualScheduleView.js';
 import { UpiQrCode } from '../components/UpiQrCode.js';
 import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
   Lock, RefreshCw, FileText, Settings, History, CheckSquare,
-  Edit, X, QrCode
+  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'sevas' | 'staff' | 'reports' | 'closure' | 'retention' | 'audit' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'schedule' | 'sevas' | 'staff' | 'reports' | 'closure' | 'retention' | 'audit' | 'settings'>('overview');
 
   // Overview Data
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportDate, setReportDate] = useState(getTempleToday());
   const [bookingFilterType, setBookingFilterType] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
   const [todaySummary, setTodaySummary] = useState<any>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -26,7 +30,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [upiForm, setUpiForm] = useState({
     merchant_name: '',
     upi_id: '',
-    verification_instruction: ''
+    verification_instruction: '',
+    qr_image_url: ''
   });
   const [isEditingTempleInfo, setIsEditingTempleInfo] = useState(false);
   const [templeInfoForm, setTempleInfoForm] = useState({
@@ -77,8 +82,8 @@ export const AdminDashboardPage: React.FC = () => {
   });
 
   // Reports
-  const [reportStart, setReportStart] = useState(new Date().toISOString().split('T')[0]);
-  const [reportEnd, setReportEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [reportStart, setReportStart] = useState(getTempleToday());
+  const [reportEnd, setReportEnd] = useState(getTempleToday());
   const [reportData, setReportData] = useState<any>(null);
 
   // Daily Closure
@@ -102,9 +107,9 @@ export const AdminDashboardPage: React.FC = () => {
   const [selectedBookingNumber, setSelectedBookingNumber] = useState('');
   const [selectedBookingTickets, setSelectedBookingTickets] = useState<Ticket[]>([]);
 
-  // Cancellation Modal
-  const [cancellationBookingId, setCancellationBookingId] = useState<string | null>(null);
-  const [cancellationReason, setCancellationReason] = useState('');
+  // రద్దుlation Modal
+  const [cancellationBookingId, setరద్దుlationBookingId] = useState<string | null>(null);
+  const [cancellationReason, setరద్దుlationReason] = useState('');
 
   useEffect(() => {
     loadOverview();
@@ -176,7 +181,8 @@ export const AdminDashboardPage: React.FC = () => {
         setUpiForm({
           merchant_name: s.upi_config.merchant_name || '',
           upi_id: s.upi_config.upi_id || '',
-          verification_instruction: s.upi_config.verification_instruction || ''
+          verification_instruction: s.upi_config.verification_instruction || '',
+          qr_image_url: s.upi_config.qr_image_url || ''
         });
       }
       if (s?.temple_info) {
@@ -191,6 +197,21 @@ export const AdminDashboardPage: React.FC = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Selected image exceeds 5MB limit. Please choose a smaller file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setUpiForm(prev => ({ ...prev, qr_image_url: result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveUpiConfig = async (e: React.FormEvent) => {
@@ -311,6 +332,22 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Strict ritual date isolation: hide sevas belonging to other dates when viewing a specific ritual day
+  const filteredBookingsList = useMemo<Booking[]>(() => {
+    if (bookingFilterType === 'scheduled_date' && reportDate) {
+      return (bookings as Booking[]).map(b => {
+        const relevantItems = (b.items_summary || []).filter((item: any) =>
+          item.scheduled_date === reportDate || (!item.scheduled_date && reportDate === getTempleToday())
+        );
+        return {
+          ...b,
+          items_summary: relevantItems
+        };
+      }).filter(b => b.items_summary.length > 0);
+    }
+    return bookings;
+  }, [bookings, bookingFilterType, reportDate]);
+
   const handleCreateSeva = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -424,7 +461,7 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleCancelBooking = async () => {
+  const handleరద్దుBooking = async () => {
     if (!cancellationBookingId || !cancellationReason.trim()) {
       alert('A valid reason is required for cancellation.');
       return;
@@ -435,8 +472,8 @@ export const AdminDashboardPage: React.FC = () => {
         body: JSON.stringify({ reason: cancellationReason })
       });
       alert('Booking cancelled and marked for refund.');
-      setCancellationBookingId(null);
-      setCancellationReason('');
+      setరద్దుlationBookingId(null);
+      setరద్దుlationReason('');
       loadOverview();
     } catch (err: any) {
       alert(err.message || 'Failed to cancel booking');
@@ -448,12 +485,12 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Admin Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8DCCE]">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#7A1C23] flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#7A1C23] flex items-center gap-2 font-serif">
             <Shield className="w-6 h-6 text-[#C86A1B]" />
-            Temple Administration & Operations
+            ఆలయ నిర్వహణ & పర్యవేక్షణ
           </h1>
           <p className="text-xs text-gray-600 mt-0.5">
-            Manage sevas, poojari assignments, daily closure, audits, reports, and privacy retention policies.
+            సేవలు, అర్చకుల కేటాయింపు, రోజు ముగింపు, ఆడిట్ లాగ్స్, ఆర్థిక నివేదికలు మరియు డేటా గోప్యతా విధానాలు.
           </p>
         </div>
 
@@ -462,71 +499,178 @@ export const AdminDashboardPage: React.FC = () => {
             type="date"
             value={reportDate}
             onChange={(e) => setReportDate(e.target.value)}
-            className="px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded text-xs text-[#2D2520] font-medium"
+            className="px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded-lg text-xs text-[#2D2520] font-medium"
           />
           <button
             onClick={loadOverview}
-            className="px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold hover:bg-[#F3ECE0]"
+            className="px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-lg text-xs font-bold hover:bg-[#F3ECE0]"
           >
-            Refresh Data
+            తాజా సమాచారం
           </button>
         </div>
       </div>
 
-      {/* Metric Cards */}
+      {/* Desktop Metric Cards (Frosted Glass) */}
       {todaySummary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">Bookings</div>
-            <div className="text-xl font-bold text-[#7A1C23] mt-1">{todaySummary.total_bookings}</div>
-            <div className="text-[10px] text-gray-400 mt-0.5">{todaySummary.total_seva_items} Seva Items</div>
+        <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">మొత్తం బుకింగ్‌లు</div>
+            <div className="text-xl font-bold text-[#7A1C23] mt-1 font-mono">{todaySummary.total_bookings}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">{todaySummary.total_seva_items} సేవా టికెట్లు</div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">Confirmed (Net)</div>
-            <div className="text-xl font-bold text-emerald-800 mt-1">₹{todaySummary.financials.net_collected_amount.toFixed(0)}</div>
-            <div className="text-[10px] text-emerald-600 mt-0.5">₹{todaySummary.financials.confirmed_amount.toFixed(0)} Gross</div>
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">నికర వసూలు (Net)</div>
+            <div className="text-xl font-bold text-emerald-800 mt-1 font-mono">₹{formatCurrency(todaySummary?.financials?.net_collected_amount, 0)}</div>
+            <div className="text-[10px] text-emerald-600 mt-0.5">₹{formatCurrency(todaySummary?.financials?.confirmed_amount, 0)} మొత్తం</div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">Cash In Hand</div>
-            <div className="text-xl font-bold text-[#2D2520] mt-1">₹{todaySummary.financials.cash_total.toFixed(0)}</div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Counter Drawer</div>
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">కౌంటర్ నగదు (Cash)</div>
+            <div className="text-xl font-bold text-[#2D2520] mt-1 font-mono">₹{formatCurrency(todaySummary?.financials?.cash_total, 0)}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">కౌంటర్ పెట్టె</div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">UPI Settlement</div>
-            <div className="text-xl font-bold text-[#C86A1B] mt-1">₹{todaySummary.financials.upi_total.toFixed(0)}</div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Bank Merchant</div>
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">యూపీఐ డిజిటల్ (UPI)</div>
+            <div className="text-xl font-bold text-[#C86A1B] mt-1 font-mono">₹{formatCurrency(todaySummary?.financials?.upi_total, 0)}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">బ్యాంక్ ఖాతా</div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">Pending Payments</div>
-            <div className="text-xl font-bold text-amber-700 mt-1">₹{todaySummary.financials.pending_amount.toFixed(0)}</div>
-            <div className="text-[10px] text-amber-600 mt-0.5">Awaiting check</div>
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">ధృవీకరించవలసినవి</div>
+            <div className="text-xl font-bold text-amber-700 mt-1 font-mono">₹{formatCurrency(todaySummary?.financials?.pending_amount, 0)}</div>
+            <div className="text-[10px] text-amber-600 mt-0.5">పెండింగ్ యూపీఐ</div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-sm">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase">Refunds</div>
-            <div className="text-xl font-bold text-rose-700 mt-1">₹{todaySummary.financials.refund_amount.toFixed(0)}</div>
-            <div className="text-[10px] text-rose-500 mt-0.5">Cancelled Sevas</div>
+          <div className="glass-surface-interactive p-3 rounded-2xl border border-white/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-gray-500 uppercase">రద్దు / వాపసు</div>
+            <div className="text-xl font-bold text-rose-700 mt-1 font-mono">₹{formatCurrency(todaySummary?.financials?.refund_amount, 0)}</div>
+            <div className="text-[10px] text-rose-500 mt-0.5">రద్దయిన సేవలు</div>
           </div>
         </div>
       )}
 
-      {/* Tabs Navigation */}
-      <div className="border-b border-[#E8DCCE] mb-6 flex overflow-x-auto gap-2">
+      {/* Mobile Glass Metric Pill (Zero Clutter) */}
+      {todaySummary && (
+        <div className="md:hidden glass-surface p-2.5 rounded-2xl flex items-center justify-between text-xs mb-3 shadow-xs">
+          <div className="flex items-center gap-1.5 font-bold text-[#7A1C23]">
+            <span>💰 నికర వసూలు:</span>
+            <span className="font-mono text-emerald-800 font-bold">₹{formatCurrency(todaySummary?.financials?.net_collected_amount, 0)}</span>
+          </div>
+          <div className="text-[11px] font-semibold text-gray-600">
+            బుకింగ్‌లు: <strong className="text-[#7A1C23] font-mono">{todaySummary.total_bookings}</strong>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Unified Glass Control Center (Apple iOS Material 3) */}
+      <div className="md:hidden glass-surface p-3 rounded-2xl border border-white/80 space-y-2 mb-3 shadow-xs">
+        {/* Row 1: Section Dropdown + Target Date in ONE compact row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1">
+            <select
+              value={activeTab}
+              onChange={(e) => {
+                const tabId = e.target.value as any;
+                setActiveTab(tabId);
+                if (tabId === 'reports') loadReport();
+                if (tabId === 'closure') loadClosureStatus();
+                if (tabId === 'retention') loadRetentionPreview();
+                if (tabId === 'audit') loadAuditLogs();
+              }}
+              className="w-full bg-[#FAF5EC]/90 border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs rounded-xl py-1.5 px-2.5 focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+            >
+              {[
+                { id: 'overview', label: '📖 బుకింగ్స్ & సమీక్ష' },
+                { id: 'schedule', label: '✨ పూజా సంకల్ప పట్టిక' },
+                { id: 'sevas', label: '📚 సేవల జాబితా' },
+                { id: 'staff', label: '👥 సిబ్బంది & అర్చకులు' },
+                { id: 'reports', label: '📄 ఆదాయ నివేదికలు' },
+                { id: 'closure', label: '☑️ రోజు ముగింపు' },
+                { id: 'retention', label: '🛡️ గోప్యత & భద్రత' },
+                { id: 'audit', label: '🔒 ఆడిట్ రికార్డులు' },
+                { id: 'settings', label: '⚙️ ఆలయ అమరికలు & యూపీఐ' }
+              ].map(tab => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="px-2 py-1 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-[11px] font-bold text-[#2D2520]"
+            />
+            <button
+              type="button"
+              onClick={() => setReportDate(getTempleToday())}
+              className="px-2 py-1 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-[11px] font-bold text-[#7A1C23] hover:bg-[#F3ECE0]"
+            >
+              నేడు
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Search Input & Row 3: Minimalist Filter Pills */}
+        {activeTab === 'overview' && (
+          <>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="బుకింగ్ సంఖ్య, సంకల్ప కర్త, మొబైల్ ద్వారా వెతకండి..."
+                value={searchBooking}
+                onChange={(e) => setSearchBooking(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
+                className="w-full pl-8 pr-3 py-1.5 bg-white/90 border border-white rounded-xl text-xs text-[#2D2520] font-medium shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+              />
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-[#E8DCCE]/40">
+              {[
+                { id: 'booking_date', label: 'కౌంటర్ బుకింగ్‌లు' },
+                { id: 'scheduled_date', label: 'సంకల్ప దినం' },
+                { id: 'future_only', label: 'ముందస్తు పూజలు' },
+                { id: 'all', label: 'అన్ని రికార్డులు' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setBookingFilterType(f.id as any)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    bookingFilterType === f.id
+                      ? 'bg-[#7A1C23] text-white shadow-2xs'
+                      : 'bg-[#FAF5EC] text-gray-600 hover:bg-[#F3ECE0] border border-[#E8DCCE]/70'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Desktop Tabs Navigation (Segmented Glass Bar) */}
+      <div className="hidden md:flex flex-wrap items-center gap-1.5 p-1.5 glass-surface rounded-2xl border border-white/80 no-scrollbar mb-4 shadow-xs">
         {[
-          { id: 'overview', label: 'Bookings & Overview', icon: BookOpen },
-          { id: 'sevas', label: 'Seva Catalogue', icon: Layers },
-          { id: 'staff', label: 'Staff & Poojaris', icon: Users },
-          { id: 'reports', label: 'Reports & Exports', icon: FileText },
-          { id: 'closure', label: 'Daily Closure', icon: CheckSquare },
-          { id: 'retention', label: 'Devotee Privacy & Retention', icon: History },
-          { id: 'audit', label: 'Audit Trail', icon: Shield },
-          { id: 'settings', label: 'Temple Settings & UPI', icon: Settings }
+          { id: 'overview', label: 'బుకింగ్స్ & సమీక్ష', icon: BookOpen },
+          { id: 'schedule', label: 'పూజా సంకల్ప పట్టిక', icon: Sparkles },
+          { id: 'sevas', label: 'సేవల జాబితా', icon: Layers },
+          { id: 'staff', label: 'సిబ్బంది & అర్చకులు', icon: Users },
+          { id: 'reports', label: 'ఆదాయ నివేదికలు', icon: FileText },
+          { id: 'closure', label: 'రోజు ముగింపు', icon: CheckSquare },
+          { id: 'retention', label: 'గోప్యత & భద్రత', icon: History },
+          { id: 'audit', label: 'ఆడిట్ రికార్డులు', icon: Shield },
+          { id: 'settings', label: 'ఆలయ అమరికలు & యూపీఐ', icon: Settings }
         ].map(tab => {
           const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
@@ -537,10 +681,10 @@ export const AdminDashboardPage: React.FC = () => {
                 if (tab.id === 'retention') loadRetentionPreview();
                 if (tab.id === 'audit') loadAuditLogs();
               }}
-              className={`pb-3 px-3 text-xs font-bold border-b-2 whitespace-nowrap flex items-center gap-1.5 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-[#7A1C23] text-[#7A1C23]'
-                  : 'border-transparent text-gray-500 hover:text-[#2D2520] hover:border-gray-300'
+              className={`py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                isActive
+                  ? 'bg-[#7A1C23] text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-[#7A1C23] hover:bg-white/70'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -552,198 +696,256 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* TAB 1: BOOKINGS & OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="space-y-4">
-          {/* Booking Filters Bar */}
-          <div className="bg-white p-4 rounded-xl border border-[#E8DCCE] shadow-sm space-y-3">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              {/* Search input */}
+        <div className="space-y-3">
+          {/* Desktop Filters Bar */}
+          <div className="hidden md:block glass-surface p-3 rounded-2xl border border-white/80 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Search by Booking #, Beneficiary, Mobile, Gothra..."
+                  placeholder="బుకింగ్ సంఖ్య, సంకల్ప కర్త, మొబైల్, గోత్రం ద్వారా వెతకండి..."
                   value={searchBooking}
                   onChange={(e) => setSearchBooking(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
-                  className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/50 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B]"
+                  className="w-full pl-9 pr-4 py-2 bg-white/90 border border-white rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#C86A1B] text-[#2D2520] font-medium shadow-2xs"
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
               </div>
 
-              {/* Date selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[#7A1C23] whitespace-nowrap uppercase">
-                  Target Date:
+                <span className="text-xs font-bold text-[#7A1C23] whitespace-nowrap font-serif">
+                  లక్ష్య తేదీ:
                 </span>
                 <input
                   type="date"
                   value={reportDate}
                   onChange={(e) => setReportDate(e.target.value)}
-                  className="px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded-md text-xs font-medium text-[#2D2520]"
+                  className="px-2.5 py-1.5 bg-white/90 border border-white rounded-xl text-xs font-bold text-[#2D2520] shadow-2xs"
                 />
                 <button
                   type="button"
-                  onClick={() => setReportDate(new Date().toISOString().split('T')[0])}
-                  className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded text-xs font-semibold text-[#7A1C23] hover:bg-[#F3ECE0]"
+                  onClick={() => setReportDate(getTempleToday())}
+                  className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs font-bold text-[#7A1C23] hover:bg-[#F3ECE0] transition-colors shadow-2xs"
                 >
-                  Today
+                  నేడు
                 </button>
                 <button
                   onClick={() => loadBookings()}
-                  className="px-3 py-1.5 bg-[#7A1C23] text-white rounded-md text-xs font-semibold hover:bg-[#5C1217]"
+                  className="px-3.5 py-1.5 bg-[#7A1C23] text-white rounded-xl text-xs font-bold hover:bg-[#5C1217] transition-colors shadow-2xs"
                 >
-                  Search
+                  వెతుకుము
                 </button>
               </div>
             </div>
 
-            {/* Filter Pills for Date Modes */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/60">
-              <span className="text-[11px] font-semibold text-gray-500 mr-1">View Mode:</span>
-              <button
-                type="button"
-                onClick={() => setBookingFilterType('booking_date')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  bookingFilterType === 'booking_date'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                1) Bookings Done on {reportDate} (Transaction Date)
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingFilterType('scheduled_date')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  bookingFilterType === 'scheduled_date'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                2) Rituals Scheduled for {reportDate} (Even if booked earlier)
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingFilterType('future_only')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  bookingFilterType === 'future_only'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                3) Advance / Future Scheduled Bookings
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  bookingFilterType === 'all'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                All Bookings
-              </button>
+            <div className="flex items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/40">
+              <span className="text-[11px] font-bold text-gray-500 mr-1">ఫిల్టర్:</span>
+              {[
+                { id: 'booking_date', label: `ఈ తేదీన కౌంటర్‌లో బుక్ చేసినవి (${reportDate})` },
+                { id: 'scheduled_date', label: 'ఈ తేదీ పూజలు (సంకల్ప దినం)' },
+                { id: 'future_only', label: 'ముందస్తు పూజా బుకింగ్‌లు' },
+                { id: 'all', label: 'అన్ని రికార్డులు' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setBookingFilterType(f.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
+                    bookingFilterType === f.id
+                      ? 'bg-[#7A1C23] text-white'
+                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Bookings Table */}
-          <div className="bg-white rounded-xl border border-[#E8DCCE] shadow-sm overflow-hidden">
+          {/* Mobile View: Apple iOS Frosted Glass Cards */}
+          <div className="md:hidden space-y-2.5">
+            {filteredBookingsList.length === 0 ? (
+              <div className="glass-surface rounded-2xl border border-white/80 p-6 text-center text-xs text-gray-500">
+                ఎటువంటి బుకింగ్‌లు లభించలేదు.
+              </div>
+            ) : (
+              filteredBookingsList.map((b: Booking) => (
+                <div key={b.id} className="glass-surface-interactive rounded-2xl p-3.5 border border-white/85 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between border-b border-[#E8DCCE]/50 pb-2">
+                    <div>
+                      <span className="font-mono font-bold text-sm text-[#7A1C23]">{b.booking_number}</span>
+                      <div className="text-[10px] text-gray-500">
+                        {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-[#7A1C23] font-mono">₹{formatCurrency(b.total_amount)}</div>
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                        b.payment_status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-800 border border-amber-500/20'
+                      }`}>
+                        {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'} • {b.payment_status === 'confirmed' ? 'స్వీకరించబడింది' : 'పెండింగ్'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs space-y-1">
+                    <div>
+                      <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
+                      <strong className="text-[#2D2520]">{toTeluguText(b.ritual_beneficiary_name)}</strong>
+                      {b.payer_mobile && <span className="text-[10px] text-gray-400 ml-1.5 font-mono">📱 {b.payer_mobile}</span>}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">గోత్రం:</span>{' '}
+                      <span className="font-bold text-amber-950">{formatTeluguGothram(b.gothra)}</span>
+                    </div>
+
+                    {/* Detailed Pooja Items */}
+                    <div className="pt-1 border-t border-[#E8DCCE]/40">
+                      <span className="text-gray-500 font-semibold text-[11px]">సేవలు & నిర్వహణ తేదీలు:</span>
+                      {b.items_summary && b.items_summary.length > 0 ? (
+                        <div className="mt-1 space-y-1">
+                          {b.items_summary.map((item: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between text-[11px] bg-white/70 p-1.5 rounded-xl border border-white">
+                              <span className="font-bold text-[#7A1C23]">{item.seva_name} ({item.quantity})</span>
+                              <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              }`}>
+                                📅 {item.scheduled_date || 'నేటి పూజ'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-gray-500">{b.ticket_count || 1} సేవా టికెట్లు</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#E8DCCE]/50 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-500">
+                      స్థితి: {b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleInspectBooking(b.id)}
+                        className="px-3 py-1 bg-white/80 border border-white text-[#7A1C23] font-bold text-xs rounded-xl hover:bg-white shadow-2xs"
+                      >
+                        టికెట్లు ముద్రించు
+                      </button>
+                      {b.booking_status !== 'cancelled' && (
+                        <button
+                          onClick={() => setరద్దుlationBookingId(b.id)}
+                          className="px-2 py-1 text-rose-700 text-xs font-semibold hover:underline"
+                        >
+                          రద్దు
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View: Full Table with pure Telugu headers and detailed item dates */}
+          <div className="hidden md:block bg-white rounded-2xl border border-[#E8DCCE] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
+                <thead className="bg-[#FAF5EC] text-gray-700 font-bold border-b border-[#E8DCCE]">
                   <tr>
-                    <th className="py-3 px-4">Booking Ref</th>
-                    <th className="py-3 px-4">Booking Transaction Date</th>
-                    <th className="py-3 px-4">Ritual / Scheduled Date</th>
-                    <th className="py-3 px-4">Ritual Beneficiary (కర్త)</th>
-                    <th className="py-3 px-4">Gothra (గోత్రం)</th>
-                    <th className="py-3 px-4">Amount</th>
-                    <th className="py-3 px-4">Payment</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4">బుకింగ్ సంఖ్య</th>
+                    <th className="py-3 px-4">కౌంటర్ సమయం</th>
+                    <th className="py-3 px-4">పూజలు & నిర్వహణ తేదీ</th>
+                    <th className="py-3 px-4">సంకల్ప కర్త</th>
+                    <th className="py-3 px-4">గోత్రం</th>
+                    <th className="py-3 px-4">రుసుము</th>
+                    <th className="py-3 px-4">చెల్లింపు</th>
+                    <th className="py-3 px-4">స్థితి</th>
+                    <th className="py-3 px-4 text-right">చర్యలు</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#FAF5EC]">
-                  {bookings.map((b) => (
+                  {filteredBookingsList.map((b) => (
                     <tr key={b.id} className="hover:bg-[#FAF5EC]/30">
                       <td className="py-3 px-4 font-mono font-bold text-[#7A1C23]">
                         {b.booking_number}
-                        <div className="text-[10px] text-gray-400 font-sans">{b.ticket_count || 1} tickets</div>
+                        <div className="text-[10px] text-gray-400 font-sans">{b.ticket_count || 1} టికెట్లు</div>
                       </td>
                       <td className="py-3 px-4 text-gray-600">
                         {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
                       </td>
                       <td className="py-3 px-4">
-                        {b.is_advance_booking || b.scheduled_for_date ? (
-                          <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              📅 Scheduled: {b.scheduled_for_date}
-                            </span>
-                            <div className="text-[10px] text-gray-500 font-medium">Advance Booking</div>
+                        {b.items_summary && b.items_summary.length > 0 ? (
+                          <div className="space-y-1">
+                            {b.items_summary.map((item: any, i: number) => (
+                              <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-[#7A1C23] text-xs">{item.seva_name}:</span>
+                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                  item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                }`}>
+                                  📅 {item.scheduled_date || 'నేటి పూజ'}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            ⚡ Same-Day Pooja
+                            ⚡ నేటి పూజ
                           </span>
                         )}
-                        {b.items_summary && b.items_summary.length > 0 && (
-                          <div className="text-[10px] text-gray-500 truncate max-w-[180px] mt-0.5">
-                            {b.items_summary.map(i => `${i.seva_name} (${i.quantity})`).join(', ')}
-                          </div>
-                        )}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-bold text-[#2D2520]">{b.ritual_beneficiary_name}</div>
+                        <div className="font-bold text-[#2D2520]">{toTeluguText(b.ritual_beneficiary_name)}</div>
                         {b.payer_mobile && <div className="text-[10px] text-gray-400">📱 {b.payer_mobile}</div>}
                       </td>
-                      <td className="py-3 px-4 font-semibold text-[#C86A1B]">
-                        {b.gothra}
+                      <td className="py-3 px-4 font-bold text-amber-950">
+                        {formatTeluguGothram(b.gothra)}
                       </td>
-                      <td className="py-3 px-4 font-bold">
-                        ₹{parseFloat(b.total_amount as any).toFixed(2)}
+                      <td className="py-3 px-4 font-bold text-[#7A1C23]">
+                        ₹{formatCurrency(b.total_amount)}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           b.payment_status === 'confirmed'
                             ? 'bg-emerald-100 text-emerald-800'
                             : b.payment_status === 'pending'
                             ? 'bg-amber-100 text-amber-800'
                             : 'bg-rose-100 text-rose-800'
                         }`}>
-                          {b.payment_method} • {b.payment_status}
+                          {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'} • {b.payment_status === 'confirmed' ? 'స్వీకరించబడింది' : 'పెండింగ్'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           b.booking_status === 'completed'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
-                          {b.booking_status}
+                          {b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-2">
                         <button
                           onClick={() => handleInspectBooking(b.id)}
-                          className="text-[#7A1C23] hover:underline font-semibold"
+                          className="text-[#7A1C23] hover:underline font-bold"
                         >
-                          Tickets
+                          టికెట్లు
                         </button>
                         {b.booking_status !== 'cancelled' && (
                           <button
-                            onClick={() => setCancellationBookingId(b.id)}
+                            onClick={() => setరద్దుlationBookingId(b.id)}
                             className="text-rose-600 hover:underline font-medium"
                           >
-                            Cancel
+                            రద్దు
                           </button>
                         )}
                       </td>
                     </tr>
                   ))}
-                  {bookings.length === 0 && (
+                  {filteredBookingsList.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-400">
-                        No bookings found matching criteria.
+                      <td colSpan={9} className="py-8 text-center text-gray-400">
+                        ఎటువంటి బుకింగ్‌లు లభించలేదు.
                       </td>
                     </tr>
                   )}
@@ -754,30 +956,38 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
+      {/* TAB: RITUAL DAY SCHEDULE & DEVOTEE ROSTER */}
+      {activeTab === 'schedule' && (
+        <RitualScheduleView
+          selectedDate={reportDate}
+          onDateChange={setReportDate}
+        />
+      )}
+
       {/* TAB 2: SEVA CATALOGUE */}
       {activeTab === 'sevas' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-base font-bold text-[#7A1C23]">Configured Sevas</h2>
-              <p className="text-xs text-gray-500">Configure prices, categories, scheduled poojas, and poojari assignments.</p>
+              <h2 className="text-base font-bold text-[#7A1C23]">ఆలయ పూజా సేవల జాబితా</h2>
+              <p className="text-xs text-gray-500">ధరలు, విభాగాలు, నిర్వహణ సమయాలు మరియు అర్చకుల కేటాయింపులు.</p>
             </div>
             <button
               onClick={() => setIsCreatingSeva(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-md text-xs font-semibold shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add New Seva
+              నూతన సేవను చేర్చండి
             </button>
           </div>
 
           {/* New Seva Form Modal */}
           {isCreatingSeva && (
             <div className="p-5 bg-white border border-[#E8DCCE] rounded-xl shadow-md space-y-4">
-              <h3 className="font-bold text-sm text-[#7A1C23]">Create New Seva</h3>
+              <h3 className="font-bold text-sm text-[#7A1C23]">నూతన పూజా సేవను జోడించండి</h3>
               <form onSubmit={handleCreateSeva} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block font-semibold mb-1">Seva Name (English) *</label>
+                  <label className="block font-semibold mb-1">సేవ పేరు (English) *</label>
                   <input
                     type="text"
                     required
@@ -789,7 +999,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">Telugu Name (శ్రీ నామం)</label>
+                  <label className="block font-semibold mb-1">తెలుగు పేరు (శ్రీ నామం)</label>
                   <input
                     type="text"
                     value={newSeva.telugu_name}
@@ -800,7 +1010,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">Price (₹) *</label>
+                  <label className="block font-semibold mb-1">రుసుము (₹) *</label>
                   <input
                     type="number"
                     required
@@ -829,7 +1039,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-1">Timing / Schedule Window</label>
+                  <label className="block font-semibold mb-1">నిర్వహణ సమయం (ఉదా: 09:00 AM - 11:00 AM)</label>
                   <input
                     type="text"
                     value={newSeva.timing}
@@ -850,7 +1060,7 @@ export const AdminDashboardPage: React.FC = () => {
                       className="rounded border-amber-400 text-[#7A1C23]"
                     />
                     <label htmlFor="isScheduledCheck" className="font-bold text-amber-900">
-                      Schedule Seva for a Specific Date (Requirement 9)
+                      నిర్ణీత తేదీకి ప్రత్యేక పూజగా నిర్ణయించండి (తేదీ వారీ విశేష పూజ)
                     </label>
                   </div>
                   <p className="text-[11px] text-amber-800">
@@ -872,7 +1082,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block font-semibold mb-1">Assign to Poojari(s)</label>
+                  <label className="block font-semibold mb-1">అర్చకులను కేటాయించండి</label>
                   <div className="flex flex-wrap gap-2">
                     {poojaris.map(p => (
                       <label key={p.id} className="flex items-center gap-1.5 px-3 py-1 border rounded bg-white cursor-pointer">
@@ -899,13 +1109,13 @@ export const AdminDashboardPage: React.FC = () => {
                     onClick={() => setIsCreatingSeva(false)}
                     className="px-3 py-1.5 border rounded bg-white text-gray-600"
                   >
-                    Cancel
+                    రద్దు
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-1.5 bg-[#7A1C23] text-white rounded font-semibold"
                   >
-                    Save Seva
+                    సేవను భద్రపరచండి
                   </button>
                 </div>
               </form>
@@ -917,13 +1127,13 @@ export const AdminDashboardPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
                 <tr>
-                  <th className="py-3 px-4">Seva Name</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Price</th>
-                  <th className="py-3 px-4">Scheduling (Req 9)</th>
-                  <th className="py-3 px-4">Assigned Poojaris</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4">సేవ పేరు</th>
+                  <th className="py-3 px-4">విభాగం</th>
+                  <th className="py-3 px-4">రుసుము</th>
+                  <th className="py-3 px-4">పూజా రకం / షెడ్యూల్</th>
+                  <th className="py-3 px-4">కేటాయించిన అర్చకులు</th>
+                  <th className="py-3 px-4">స్థితి</th>
+                  <th className="py-3 px-4 text-right">చర్యలు</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#FAF5EC]">
@@ -941,7 +1151,7 @@ export const AdminDashboardPage: React.FC = () => {
                           📅 Scheduled: {s.scheduled_date}
                         </span>
                       ) : (
-                        <span className="text-gray-400">Regular Pooja</span>
+                        <span className="text-gray-400">నిత్య పూజ</span>
                       )}
                     </td>
                     <td className="py-3 px-4">
@@ -964,7 +1174,7 @@ export const AdminDashboardPage: React.FC = () => {
                         className="text-xs font-semibold text-[#7A1C23] hover:underline inline-flex items-center gap-1"
                       >
                         <Edit className="w-3.5 h-3.5" />
-                        Edit
+                        సవరించు
                       </button>
                       <button
                         onClick={() => handleToggleSevaStatus(s.id, s.is_active)}
@@ -987,10 +1197,10 @@ export const AdminDashboardPage: React.FC = () => {
                   <div>
                     <h3 className="font-bold text-base text-[#7A1C23] flex items-center gap-2">
                       <Edit className="w-4 h-4 text-[#C86A1B]" />
-                      Edit Seva: {editingSeva.name}
+                      సేవ సవరణ: {editingSeva.name}
                     </h3>
                     <p className="text-xs text-gray-500">
-                      Admins can configure name, Telugu label, category, price, timing, date scheduling, and assigned poojaris.
+                      పేరు, తెలుగు శ్రీ నామం, విభాగం, రుసుము, సమయం మరియు అర్చకుల కేటాయింపులను సవరించవచ్చు.
                     </p>
                   </div>
                   <button
@@ -1004,7 +1214,7 @@ export const AdminDashboardPage: React.FC = () => {
 
                 <form onSubmit={handleSaveEditSeva} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <label className="block font-semibold mb-1">Seva Name (English) *</label>
+                    <label className="block font-semibold mb-1">సేవ పేరు (English) *</label>
                     <input
                       type="text"
                       required
@@ -1015,7 +1225,7 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block font-semibold mb-1">Telugu Name (శ్రీ నామం)</label>
+                    <label className="block font-semibold mb-1">తెలుగు పేరు (శ్రీ నామం)</label>
                     <input
                       type="text"
                       value={editingSevaForm.telugu_name}
@@ -1025,7 +1235,7 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block font-semibold mb-1">Price (₹) *</label>
+                    <label className="block font-semibold mb-1">రుసుము (₹) *</label>
                     <input
                       type="number"
                       required
@@ -1054,7 +1264,7 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block font-semibold mb-1">Timing / Schedule Window</label>
+                    <label className="block font-semibold mb-1">నిర్వహణ సమయం (ఉదా: 09:00 AM - 11:00 AM)</label>
                     <input
                       type="text"
                       value={editingSevaForm.timing}
@@ -1097,7 +1307,7 @@ export const AdminDashboardPage: React.FC = () => {
                         className="rounded border-amber-400 text-[#7A1C23]"
                       />
                       <label htmlFor="editIsScheduledCheck" className="font-bold text-amber-900">
-                        Schedule Seva for a Specific Date (Requirement 9)
+                        నిర్ణీత తేదీకి ప్రత్యేక పూజగా నిర్ణయించండి (తేదీ వారీ విశేష పూజ)
                       </label>
                     </div>
                     <p className="text-[11px] text-amber-800">
@@ -1146,7 +1356,7 @@ export const AdminDashboardPage: React.FC = () => {
                       onClick={() => setEditingSeva(null)}
                       className="px-4 py-2 border rounded bg-white text-gray-600 hover:bg-gray-50"
                     >
-                      Cancel
+                      రద్దు
                     </button>
                     <button
                       type="submit"
@@ -1234,7 +1444,7 @@ export const AdminDashboardPage: React.FC = () => {
                     onClick={() => setIsCreatingUser(false)}
                     className="px-3 py-1.5 border rounded bg-white text-gray-600"
                   >
-                    Cancel
+                    రద్దు
                   </button>
                   <button
                     type="submit"
@@ -1254,8 +1464,8 @@ export const AdminDashboardPage: React.FC = () => {
                   <th className="py-3 px-4">Name</th>
                   <th className="py-3 px-4">Username</th>
                   <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4">స్థితి</th>
+                  <th className="py-3 px-4 text-right">చర్యలు</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#FAF5EC]">
@@ -1294,81 +1504,81 @@ export const AdminDashboardPage: React.FC = () => {
       {/* TAB 4: REPORTS & CSV EXPORT */}
       {activeTab === 'reports' && (
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded-xl border border-[#E8DCCE] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-gray-500">From Date</label>
+          <div className="glass-surface p-3.5 rounded-2xl border border-white/80 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex-1 min-w-[130px]">
+                <label className="block text-[10px] font-bold uppercase text-[#7A1C23] mb-0.5">ప్రారంభ తేదీ</label>
                 <input
                   type="date"
                   value={reportStart}
                   onChange={(e) => setReportStart(e.target.value)}
-                  className="px-2.5 py-1.5 border rounded text-xs"
+                  className="w-full px-2.5 py-1.5 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-xs font-bold text-[#2D2520]"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-gray-500">To Date</label>
+              <div className="flex-1 min-w-[130px]">
+                <label className="block text-[10px] font-bold uppercase text-[#7A1C23] mb-0.5">ముగింపు తేదీ</label>
                 <input
                   type="date"
                   value={reportEnd}
                   onChange={(e) => setReportEnd(e.target.value)}
-                  className="px-2.5 py-1.5 border rounded text-xs"
+                  className="w-full px-2.5 py-1.5 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-xs font-bold text-[#2D2520]"
                 />
               </div>
               <button
                 onClick={loadReport}
-                className="mt-4 px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold"
+                className="mt-3.5 px-3.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-xl text-xs font-bold hover:bg-[#F3ECE0] transition-colors shadow-2xs"
               >
-                Generate Report
+                నివేదికను రూపొందించు
               </button>
             </div>
 
             <button
               onClick={handleDownloadCsv}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded text-xs font-semibold shadow-sm"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
             >
-              <Download className="w-4 h-4" />
-              Download CSV Report
+              <Download className="w-4 h-4 text-[#E0AE18]" />
+              CSV నివేదిక డౌన్‌లోడ్
             </button>
           </div>
 
           {reportData && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm space-y-3">
-                <h3 className="font-bold text-sm text-[#7A1C23] border-b pb-2">Financial Reconciliation</h3>
+                <h3 className="font-bold text-sm text-[#7A1C23] border-b pb-2">ఆర్థిక గణాంకాల సమన్వయం</h3>
                 <div className="divide-y text-xs">
                   <div className="py-2 flex justify-between">
-                    <span>Booked Total</span>
-                    <span className="font-bold">₹{reportData.financials.booked_amount.toFixed(2)}</span>
+                    <span>మొత్తం బుకింగ్ రుసుము</span>
+                    <span className="font-bold">₹{formatCurrency(reportData.financials?.booked_amount)}</span>
                   </div>
                   <div className="py-2 flex justify-between">
-                    <span>Confirmed Collections</span>
-                    <span className="font-bold text-emerald-700">₹{reportData.financials.confirmed_amount.toFixed(2)}</span>
+                    <span>స్వీకరించిన వసూళ్లు</span>
+                    <span className="font-bold text-emerald-700">₹{formatCurrency(reportData.financials?.confirmed_amount)}</span>
                   </div>
                   <div className="py-2 flex justify-between pl-4 text-gray-600">
-                    <span>• Cash Collections</span>
-                    <span>₹{reportData.financials.cash_total.toFixed(2)}</span>
+                    <span>• కౌంటర్ నగదు (Cash)</span>
+                    <span>₹{formatCurrency(reportData.financials?.cash_total)}</span>
                   </div>
                   <div className="py-2 flex justify-between pl-4 text-gray-600">
-                    <span>• UPI Collections</span>
-                    <span>₹{reportData.financials.upi_total.toFixed(2)}</span>
+                    <span>• యూపీఐ డిజిటల్ (UPI)</span>
+                    <span>₹{formatCurrency(reportData.financials?.upi_total)}</span>
                   </div>
                   <div className="py-2 flex justify-between text-amber-700">
-                    <span>Pending Payments</span>
-                    <span>₹{reportData.financials.pending_amount.toFixed(2)}</span>
+                    <span>ధృవీకరించవలసినవి (పెండింగ్)</span>
+                    <span>₹{formatCurrency(reportData.financials?.pending_amount)}</span>
                   </div>
                   <div className="py-2 flex justify-between text-rose-700">
-                    <span>Refunds / Cancellations</span>
-                    <span>₹{reportData.financials.refund_amount.toFixed(2)}</span>
+                    <span>Refunds / రద్దుlations</span>
+                    <span>₹{formatCurrency(reportData.financials?.refund_amount)}</span>
                   </div>
                   <div className="py-2 flex justify-between font-extrabold text-[#7A1C23] text-sm">
-                    <span>Net Collected Amount</span>
-                    <span>₹{reportData.financials.net_collected_amount.toFixed(2)}</span>
+                    <span>నికర ఆలయ ఆదాయం (Net)</span>
+                    <span>₹{formatCurrency(reportData.financials?.net_collected_amount)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm space-y-3">
-                <h3 className="font-bold text-sm text-[#7A1C23] border-b pb-2">Seva Breakdown</h3>
+                <h3 className="font-bold text-sm text-[#7A1C23] border-b pb-2">సేవల వారీ ఆదాయ విశ్లేషణ</h3>
                 <div className="divide-y text-xs max-h-72 overflow-y-auto">
                   {reportData.seva_breakdown.map((s: any) => (
                     <div key={s.seva_name} className="py-2 flex justify-between items-center">
@@ -1376,7 +1586,7 @@ export const AdminDashboardPage: React.FC = () => {
                         <div className="font-semibold text-[#2D2520]">{s.seva_name}</div>
                         <div className="text-[10px] text-gray-500">{s.category} • {s.total_quantity} Booked</div>
                       </div>
-                      <span className="font-bold text-[#7A1C23]">₹{s.total_revenue.toFixed(2)}</span>
+                      <span className="font-bold text-[#7A1C23]">₹{formatCurrency(s.total_revenue)}</span>
                     </div>
                   ))}
                 </div>
@@ -1656,21 +1866,49 @@ export const AdminDashboardPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Live QR Preview during edit */}
-                  {upiForm.upi_id && (
-                    <div className="pt-2 border-t border-gray-100 flex flex-col items-center">
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        Live Scannable QR Code Preview
-                      </div>
-                      <UpiQrCode
-                        upiId={upiForm.upi_id}
-                        merchantName={upiForm.merchant_name || 'Temple Merchant'}
-                        amount={100}
-                        transactionNote="Sample Seva Booking Verification"
-                        size={150}
-                      />
+                  {/* Upload Official Standee QR Image */}
+                  <div className="pt-2 border-t border-gray-100 space-y-2">
+                    <label className="block font-semibold text-gray-700 mb-0.5">
+                      Upload Official Temple Standee QR (Bank / Merchant Standee Image)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold hover:bg-[#F3ECE0]">
+                        <Upload className="w-3.5 h-3.5 text-[#C86A1B]" />
+                        Choose Standee Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleQrUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      {upiForm.qr_image_url && (
+                        <button
+                          type="button"
+                          onClick={() => setUpiForm(prev => ({ ...prev, qr_image_url: '' }))}
+                          className="text-[11px] text-red-600 hover:text-red-800 underline font-semibold"
+                        >
+                          Remove Image
+                        </button>
+                      )}
                     </div>
-                  )}
+                    <p className="text-[10px] text-gray-500">
+                      Upload photo or digital file of your temple's physical standee (PhonePe, GPay, BharatPe, SBI, Canara). Counter staff will present this QR for devotees to scan.
+                    </p>
+
+                    {upiForm.qr_image_url && (
+                      <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg flex flex-col items-center">
+                        <div className="text-[10px] font-bold text-gray-600 uppercase mb-2">
+                          Standee Image Preview
+                        </div>
+                        <img
+                          src={upiForm.qr_image_url}
+                          alt="Standee QR Preview"
+                          className="max-h-52 object-contain rounded border border-gray-300 shadow-sm bg-white p-1"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex justify-end gap-2 pt-2 border-t border-[#E8DCCE]">
                     <button
@@ -1678,7 +1916,7 @@ export const AdminDashboardPage: React.FC = () => {
                       onClick={() => setIsEditingUpi(false)}
                       className="px-3 py-1.5 border border-[#E8DCCE] rounded text-gray-600 bg-white hover:bg-gray-50"
                     >
-                      Cancel
+                      రద్దు
                     </button>
                     <button
                       type="submit"
@@ -1693,12 +1931,12 @@ export const AdminDashboardPage: React.FC = () => {
                   <div className="p-3 bg-amber-50 rounded-lg border border-amber-200/80 space-y-1.5 text-gray-800">
                     <div>
                       <span className="font-semibold text-gray-600">Merchant Name:</span>{' '}
-                      <strong className="text-[#7A1C23]">{templeSettings.upi_config?.merchant_name}</strong>
+                      <strong className="text-[#7A1C23]">{templeSettings.upi_config?.merchant_name || 'Sri Sharada Peetham Temple'}</strong>
                     </div>
                     <div>
                       <span className="font-semibold text-gray-600">UPI ID / VPA:</span>{' '}
                       <span className="font-mono font-bold text-amber-950 bg-white px-2 py-0.5 rounded border border-amber-300">
-                        {templeSettings.upi_config?.upi_id}
+                        {templeSettings.upi_config?.upi_id || 'sringeri.temple@sbi'}
                       </span>
                     </div>
                     {templeSettings.upi_config?.verification_instruction && (
@@ -1708,18 +1946,31 @@ export const AdminDashboardPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Scannable Counter QR Code Display */}
+                  {/* Active Temple Standee QR Code Display */}
                   <div className="flex flex-col items-center">
                     <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                       Active Counter QR Code
                     </div>
-                    <UpiQrCode
-                      upiId={templeSettings.upi_config?.upi_id || 'sringeri.temple@sbi'}
-                      merchantName={templeSettings.upi_config?.merchant_name || 'Sri Sharada Peetham Temple'}
-                      amount={200}
-                      transactionNote="Sample Seva Verification"
-                      size={160}
-                    />
+                    {templeSettings.upi_config?.qr_image_url ? (
+                      <div className="flex flex-col items-center p-2 bg-white rounded-lg border border-[#E8DCCE] shadow-xs">
+                        <img
+                          src={templeSettings.upi_config.qr_image_url}
+                          alt="Official Temple Standee QR"
+                          className="max-h-56 max-w-full object-contain rounded border border-gray-100 shadow-sm"
+                        />
+                        <div className="text-[11px] font-medium text-amber-900 mt-2 text-center">
+                          Official standee QR presented to devotees at counter
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full p-4 border border-dashed border-amber-300 bg-amber-50/50 rounded-lg text-center space-y-1.5">
+                        <QrCode className="w-8 h-8 text-[#C86A1B] mx-auto opacity-70" />
+                        <div className="text-xs font-semibold text-gray-700">No Standee Image Uploaded Yet</div>
+                        <p className="text-[10px] text-gray-500">
+                          Click "Edit UPI Details" above to upload your temple's official bank standee photo.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1813,7 +2064,7 @@ export const AdminDashboardPage: React.FC = () => {
                       onClick={() => setIsEditingTempleInfo(false)}
                       className="px-3 py-1.5 border border-[#E8DCCE] rounded text-gray-600 bg-white hover:bg-gray-50"
                     >
-                      Cancel
+                      రద్దు
                     </button>
                     <button
                       type="submit"
@@ -1868,39 +2119,39 @@ export const AdminDashboardPage: React.FC = () => {
         onTicketsUpdated={(t) => setSelectedBookingTickets(t)}
       />
 
-      {/* Cancellation Modal */}
+      {/* రద్దుlation Modal */}
       {cancellationBookingId && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-xl border border-[#E8DCCE] p-6 max-w-md w-full space-y-4 shadow-xl">
-            <h3 className="font-bold text-base text-rose-700">Cancel Booking & Process Refund</h3>
+            <h3 className="font-bold text-base text-rose-700">రద్దు Booking & Process Refund</h3>
             <p className="text-xs text-gray-600">
               This action will mark the booking and all its item tickets as cancelled, update payment status to refunded, and log an audit record.
             </p>
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Reason for Cancellation *
+                Reason for రద్దుlation *
               </label>
               <textarea
                 rows={3}
                 required
                 value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
+                onChange={(e) => setరద్దుlationReason(e.target.value)}
                 placeholder="e.g. Devotee emergency request; ritual could not be performed"
                 className="w-full px-3 py-2 border rounded text-xs bg-[#FAF5EC]/30"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
-                onClick={() => { setCancellationBookingId(null); setCancellationReason(''); }}
+                onClick={() => { setరద్దుlationBookingId(null); setరద్దుlationReason(''); }}
                 className="px-3 py-1.5 border rounded text-xs text-gray-600"
               >
                 Back
               </button>
               <button
-                onClick={handleCancelBooking}
+                onClick={handleరద్దుBooking}
                 className="px-4 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded text-xs"
               >
-                Confirm Cancellation
+                Confirm రద్దుlation
               </button>
             </div>
           </div>

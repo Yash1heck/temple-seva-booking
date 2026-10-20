@@ -103,3 +103,4 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
     </div>
   );
 };
+

@@ -17,6 +17,7 @@ import { settingsRoutes } from './routes/settings.routes.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
+    bodyLimit: 10 * 1024 * 1024, // 10MB to support temple standee QR photo uploads
     logger: process.env.NODE_ENV === 'test' ? false : {
       level: process.env.LOG_LEVEL || 'info',
       redact: ['req.headers.authorization', 'body.password']

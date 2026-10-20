@@ -95,7 +95,7 @@ export class PoojariService {
            AND b.booking_status != 'cancelled'
            AND (
              (bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot = $2::date)
-             OR (bi.scheduled_date_snapshot IS NULL AND t.created_at::date = $2::date)
+             OR (bi.scheduled_date_snapshot IS NULL AND (t.created_at + INTERVAL '5 hours 30 minutes')::date = $2::date)
            )
          ORDER BY t.created_at ASC`,
         [seva.id, targetDate]

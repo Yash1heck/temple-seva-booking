@@ -5,9 +5,9 @@ import { DevoteeService } from '../devotees/devotee.service.js';
 export interface BookingCartItemInput {
   seva_id: string;
   quantity?: number;
-  // Ritual details for validation (must match cart-level ritual details)
   ritual_beneficiary_name?: string;
   gothra?: string;
+  scheduled_date?: string | null;
 }
 
 export interface CreateBookingInput {
@@ -132,7 +132,7 @@ export class BookingService {
           price: seva.price,
           quantity: qty,
           item_total: itemTotal,
-          scheduled_date: seva.is_scheduled ? seva.scheduled_date : null
+          scheduled_date: item.scheduled_date || (seva.is_scheduled ? seva.scheduled_date : null)
         });
       }
 
@@ -309,11 +309,19 @@ export class BookingService {
     const tRes = await db.query(`SELECT * FROM tickets WHERE booking_id = $1 ORDER BY item_index ASC`, [bookingId]);
     const pRes = await db.query(`SELECT * FROM payments WHERE booking_id = $1 ORDER BY created_at DESC LIMIT 1`, [bookingId]);
 
+    booking.total_amount = parseFloat(booking.total_amount) || 0;
+    const tickets = tRes.rows.map(t => ({ ...t, amount: parseFloat(t.amount) || 0 }));
+    const items = iRes.rows.map(i => ({
+      ...i,
+      seva_price_snapshot: parseFloat(i.seva_price_snapshot) || 0,
+      item_total: parseFloat(i.item_total) || 0
+    }));
+
     return {
       booking,
-      items: iRes.rows,
-      tickets: tRes.rows,
-      payment: pRes.rows[0] || null
+      items,
+      tickets,
+      payment: pRes.rows[0] ? { ...pRes.rows[0], amount: parseFloat(pRes.rows[0].amount) || 0 } : null
     };
   }
 
@@ -344,12 +352,12 @@ export class BookingService {
                WHERE bi.booking_id = b.id
              ) as items_summary,
              (
-               SELECT bool_or(bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot > b.created_at::date)
+               SELECT bool_or(bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot > (b.created_at + INTERVAL '5 hours 30 minutes')::date)
                FROM booking_items bi
                WHERE bi.booking_id = b.id
              ) as is_advance_booking,
              (
-               SELECT MIN(bi.scheduled_date_snapshot)::text
+               SELECT string_agg(DISTINCT bi.scheduled_date_snapshot::text, ', ')
                FROM booking_items bi
                WHERE bi.booking_id = b.id AND bi.scheduled_date_snapshot IS NOT NULL
              ) as scheduled_for_date
@@ -363,7 +371,7 @@ export class BookingService {
     // Filter by counter booking date (transaction date)
     if (options.bookingDate) {
       params.push(options.bookingDate);
-      conditions.push(`b.created_at::date = $${params.length}::date`);
+      conditions.push(`(b.created_at + INTERVAL '5 hours 30 minutes')::date = $${params.length}::date`);
     }
 
     // Filter by ritual scheduled date (even if booked on an earlier date!)
@@ -374,7 +382,7 @@ export class BookingService {
         WHERE bi.booking_id = b.id
           AND (
             (bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot = $${params.length}::date)
-            OR (bi.scheduled_date_snapshot IS NULL AND b.created_at::date = $${params.length}::date)
+            OR (bi.scheduled_date_snapshot IS NULL AND (b.created_at + INTERVAL '5 hours 30 minutes')::date = $${params.length}::date)
           )
       )`);
     }
@@ -385,7 +393,7 @@ export class BookingService {
         SELECT 1 FROM booking_items bi
         WHERE bi.booking_id = b.id
           AND bi.scheduled_date_snapshot IS NOT NULL
-          AND bi.scheduled_date_snapshot > CURRENT_DATE
+          AND bi.scheduled_date_snapshot > (CURRENT_TIMESTAMP + INTERVAL '5 hours 30 minutes')::date
       )`);
     }
 
@@ -433,7 +441,10 @@ export class BookingService {
     query += ` OFFSET $${params.length}`;
 
     const res = await db.query(query, params);
-    return res.rows;
+    return res.rows.map(row => ({
+      ...row,
+      total_amount: parseFloat(row.total_amount) || 0
+    }));
   }
 
   static async cancelBooking(bookingId: string, adminId: string, reason: string, client?: IDatabaseClient): Promise<any> {

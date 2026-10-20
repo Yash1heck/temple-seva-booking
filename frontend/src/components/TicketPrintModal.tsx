@@ -2,6 +2,9 @@ import React from 'react';
 import { Ticket } from '../types.js';
 import { Printer, X, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { apiRequest } from '../api/client.js';
+import { formatTempleDateTime } from '../utils/date.js';
+import { formatCurrency } from '../utils/format.js';
+import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 
 interface TicketPrintModalProps {
   isOpen: boolean;
@@ -52,31 +55,32 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
       const newTickets = tickets.map(t => t.id === ticketId ? updated : t);
       setTickets(newTickets);
       if (onTicketsUpdated) onTicketsUpdated(newTickets);
-      // Automatically trigger browser print after incrementing reprint count
       setTimeout(() => {
         window.print();
       }, 100);
     } catch (err: any) {
-      alert(err.message || 'Failed to reprint ticket');
+      alert(err.message || 'టికెట్ పునఃముద్రణ విఫలమైంది');
     } finally {
       setReprintingId(null);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E8DCCE] overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E8DCCE] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="bg-[#FAF5EC] px-6 py-4 border-b border-[#E8DCCE] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#FDF4EB] border border-[#C86A1B]/30 flex items-center justify-center text-[#7A1C23] font-serif text-lg">
+        <div className="bg-[#FAF5EC] px-4 sm:px-6 py-3.5 border-b border-[#E8DCCE] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-[#FDF4EB] border border-[#C86A1B]/30 flex items-center justify-center text-[#7A1C23] font-serif text-lg shrink-0">
               🕉️
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#7A1C23]">
-                Seva Tickets Issued ({tickets.length} {tickets.length === 1 ? 'Ticket' : 'Tickets'})
+              <h2 className="text-sm sm:text-base font-bold text-[#7A1C23] font-serif">
+                పూజా సేవా రసీదులు ({tickets.length} టికెట్లు జారీ అయ్యాయి)
               </h2>
-              <p className="text-xs text-gray-500">Booking Ref: <span className="font-semibold text-[#2D2520]">{bookingNumber}</span></p>
+              <p className="text-[11px] text-gray-500">
+                బుకింగ్ సంఖ్య: <span className="font-mono font-bold text-[#2D2520]">{bookingNumber}</span>
+              </p>
             </div>
           </div>
           <button
@@ -88,79 +92,99 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
         </div>
 
         {/* Action Bar */}
-        <div className="bg-white px-6 py-3 border-b border-[#E8DCCE] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-emerald-800 text-xs font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            Booking persisted to PostgreSQL successfully.
+        <div className="bg-white px-4 sm:px-6 py-2.5 border-b border-[#E8DCCE] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-emerald-800 text-xs font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            బుకింగ్ విజయవంతంగా నమోదైంది.
           </div>
           <button
             onClick={handleBrowserPrint}
-            className="flex items-center gap-2 px-4 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-md text-xs font-semibold shadow-sm transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
           >
-            <Printer className="w-4 h-4" />
-            Print All ({tickets.length}) Tickets
+            <Printer className="w-4 h-4 text-[#E0AE18]" />
+            అన్ని టికెట్లను ముద్రించండి ({tickets.length})
           </button>
         </div>
 
         {/* Scrollable Preview Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#F3ECE0]/30">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-[#F3ECE0]/30">
           {tickets.map((t, idx) => (
             <div
               key={t.id}
-              className="bg-white rounded-lg border border-[#E8DCCE] p-4 shadow-sm relative space-y-2 font-mono text-xs text-[#2D2520]"
+              className="bg-white rounded-xl border border-[#E8DCCE] p-3.5 sm:p-4 shadow-xs relative space-y-2 text-xs text-[#2D2520]"
             >
               <div className="flex justify-between items-start border-b border-dashed border-gray-300 pb-2">
                 <div>
-                  <div className="font-bold text-sm text-[#7A1C23]">{templeInfo.name}</div>
-                  <div className="text-[11px] text-gray-500 font-sans">{templeInfo.tagline}</div>
+                  <div className="font-bold text-sm text-[#7A1C23] font-serif">
+                    {templeInfo.telugu_name || templeInfo.name}
+                  </div>
+                  <div className="text-[11px] text-gray-500">{templeInfo.tagline}</div>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded text-[#7A1C23]">
+                  <span className="font-mono font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded text-[#7A1C23]">
                     {t.ticket_number}
                   </span>
                   {t.reprint_count > 0 && (
-                    <div className="mt-1 text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1 rounded">
-                      REPRINT (#{t.reprint_count})
+                    <div className="mt-1 text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-300 px-1 rounded">
+                      పునఃముద్రణ (#{t.reprint_count})
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px] py-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs py-1">
                 <div>
-                  <span className="text-gray-500">Seva:</span> <span className="font-bold text-[#7A1C23]">{t.seva_name}</span>
+                  <span className="text-gray-500">పూజా సేవ:</span> <span className="font-bold text-[#7A1C23]">{t.seva_name}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Amount:</span> <span className="font-bold">₹{parseFloat(t.amount as any).toFixed(2)}</span>
+                  <span className="text-gray-500">సేవా రుసుము:</span> <span className="font-bold">రూ. {formatCurrency(t.amount)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Beneficiary:</span> <span className="font-bold">{t.ritual_beneficiary_name}</span>
+                  <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
+                  <span className="font-bold text-[#7A1C23]">
+                    {toTeluguText(t.ritual_beneficiary_name)}
+                    {toTeluguText(t.ritual_beneficiary_name) !== t.ritual_beneficiary_name && (
+                      <span className="text-[11px] font-normal text-gray-500 ml-1">({t.ritual_beneficiary_name})</span>
+                    )}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Gothra:</span> <span className="font-bold">{t.gothra}</span>
+                  <span className="text-gray-500">గోత్రం:</span>{' '}
+                  <span className="font-bold text-amber-950">
+                    {formatTeluguGothram(t.gothra)}
+                    {formatTeluguGothram(t.gothra) !== t.gothra && (
+                      <span className="text-[11px] font-normal text-gray-500 ml-1">({t.gothra})</span>
+                    )}
+                  </span>
                 </div>
                 {t.family_details && (
-                  <div className="col-span-2">
-                    <span className="text-gray-500">Family:</span> {t.family_details}
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-500">కుటుంబ సభ్యులు:</span>{' '}
+                    <span className="font-medium text-gray-800">
+                      {toTeluguText(t.family_details)}
+                      {toTeluguText(t.family_details) !== t.family_details && (
+                        <span className="text-[11px] font-normal text-gray-500 ml-1">({t.family_details})</span>
+                      )}
+                    </span>
                   </div>
                 )}
                 <div>
-                  <span className="text-gray-500">Booked:</span> {new Date(t.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                  <span className="text-gray-500">బుకింగ్ సమయం:</span> {formatTempleDateTime(t.created_at)}
                 </div>
                 <div>
-                  <span className="text-gray-500">Status:</span> <span className="text-emerald-700 font-semibold uppercase">{t.status}</span>
+                  <span className="text-gray-500">చెల్లింపు:</span> <span className="text-emerald-700 font-bold">{t.payment_method === 'cash' ? 'నగదు చెల్లింపు' : 'యూపీఐ డిజిటల్ చెల్లింపు'}</span>
                 </div>
               </div>
 
-              <div className="border-t border-dashed border-gray-300 pt-2 flex justify-between items-center text-[10px] text-gray-500 font-sans">
-                <span>Item {idx + 1} of {tickets.length}</span>
+              <div className="border-t border-dashed border-gray-300 pt-2 flex justify-between items-center text-[11px] text-gray-500">
+                <span>టికెట్ {idx + 1} / {tickets.length}</span>
                 <button
                   onClick={() => handleReprintSingle(t.id)}
                   disabled={reprintingId === t.id}
-                  className="flex items-center gap-1 text-[#7A1C23] hover:underline font-semibold"
+                  className="flex items-center gap-1 text-[#7A1C23] hover:underline font-bold"
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  Reprint this ticket
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  ఈ టికెట్ మళ్లీ ముద్రించండి
                 </button>
               </div>
             </div>
@@ -168,12 +192,12 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-[#FAF5EC] px-6 py-3 border-t border-[#E8DCCE] flex justify-end">
+        <div className="bg-[#FAF5EC] px-4 sm:px-6 py-3 border-t border-[#E8DCCE] flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-[#E8DCCE] bg-white text-[#2D2520] hover:bg-gray-50 rounded-md text-xs font-semibold"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#7A1C23] text-white hover:bg-[#5C1217] rounded-lg text-xs font-bold shadow-xs transition-colors"
           >
-            Done / Next Booking
+            పూర్తయింది / తదుపరి బుకింగ్ చేయండి
           </button>
         </div>
       </div>
@@ -183,43 +207,43 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
         {tickets.map((t, idx) => (
           <div key={`print-${t.id}`} className="ticket-thermal-page">
             <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
-              <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{templeInfo.name}</div>
-              {templeInfo.telugu_name && (
-                <div style={{ fontSize: '11px' }}>{templeInfo.telugu_name}</div>
-              )}
-              <div style={{ fontSize: '9px' }}>{templeInfo.tagline}</div>
-              <div style={{ fontSize: '9px' }}>{templeInfo.contact_phone}</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold' }}>॥ శ్రీ శారదా పరమేశ్వరీ ప్రసన్నం ॥</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000', margin: '1mm 0' }}>{templeInfo.telugu_name || 'శ్రీ శృంగేరి శారదా పీఠం సన్నిధానం'}</div>
+              <div style={{ fontSize: '10px' }}>{templeInfo.tagline || 'శ్రీ జగద్గురు శంకరాచార్య మహాసంస్థానం'}</div>
+              {templeInfo.address && <div style={{ fontSize: '9px' }}>{templeInfo.address}</div>}
+              {templeInfo.contact_phone && <div style={{ fontSize: '9px' }}>ఫోన్: {templeInfo.contact_phone}</div>}
               <div style={{ margin: '2mm 0', borderBottom: '1px dashed #000' }} />
-              <div style={{ fontSize: '11px', fontWeight: 'bold' }}>SEVA PRASADA RECEIPT</div>
+              <div style={{ fontSize: '13px', fontWeight: 'bold' }}>పవిత్ర పూజా సేవా రశీదు</div>
             </div>
 
-            <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <div><strong>Ticket No:</strong> {t.ticket_number}</div>
-              <div><strong>Booking Ref:</strong> {bookingNumber}</div>
-              <div><strong>Date:</strong> {new Date(t.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
-              <div style={{ margin: '1mm 0', borderBottom: '1px dashed #000' }} />
+            <div style={{ fontSize: '10.5px', lineHeight: '1.5' }}>
+              <div><strong>టికెట్ సంఖ్య:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{t.ticket_number}</span></div>
+              <div><strong>బుకింగ్ సంఖ్య:</strong> <span style={{ fontFamily: 'monospace' }}>{bookingNumber}</span></div>
+              <div><strong>జారీ తేదీ & సమయం:</strong> {formatTempleDateTime(t.created_at)}</div>
+              <div style={{ margin: '1.5mm 0', borderBottom: '1px dashed #000' }} />
 
-              <div><strong>Seva:</strong> {t.seva_name}</div>
-              <div><strong>Ritual Beneficiary:</strong> {t.ritual_beneficiary_name}</div>
-              <div><strong>Gothra:</strong> {t.gothra}</div>
+              <div style={{ fontSize: '11.5px', margin: '1mm 0' }}><strong>పూజా సేవ:</strong> <strong>{t.seva_name}</strong></div>
+              <div><strong>సంకల్ప కర్త:</strong> <strong>{toTeluguText(t.ritual_beneficiary_name)}</strong></div>
+              <div><strong>గోత్రము:</strong> <strong>{formatTeluguGothram(t.gothra)}</strong></div>
               {t.family_details && (
-                <div><strong>Family Details:</strong> {t.family_details}</div>
+                <div><strong>కుటుంబ సభ్యుల పేర్లు:</strong> {toTeluguText(t.family_details)}</div>
               )}
 
-              <div style={{ margin: '1mm 0', borderBottom: '1px dashed #000' }} />
-              <div><strong>Amount:</strong> Rs. {parseFloat(t.amount as any).toFixed(2)}</div>
-              <div><strong>Payment:</strong> Confirmed ({t.payment_method?.toUpperCase() || 'CASH'})</div>
+              <div style={{ margin: '1.5mm 0', borderBottom: '1px dashed #000' }} />
+              <div style={{ fontSize: '12px' }}><strong>సేవా రుసుము:</strong> <strong>రూ. {formatCurrency(t.amount)}/-</strong></div>
+              <div><strong>చెల్లింపు విధానం:</strong> {t.payment_method === 'cash' ? 'నగదు చెల్లింపు (స్వీకరించబడింది)' : 'యూపీఐ డిజిటల్ చెల్లింపు (స్వీకరించబడింది)'}</div>
               {t.reprint_count > 0 && (
-                <div style={{ fontWeight: 'bold', marginTop: '1mm' }}>
-                  *** DUPLICATE / REPRINT (#{t.reprint_count}) ***
+                <div style={{ fontWeight: 'bold', marginTop: '1.5mm', fontSize: '10px', textAlign: 'center' }}>
+                  *** పునఃముద్రిత రశీదు (ద్వితీయ ప్రతి - #{t.reprint_count}) ***
                 </div>
               )}
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: '3mm', fontSize: '9px', borderTop: '1px dashed #000', paddingTop: '2mm' }}>
-              <div>॥ శ్రీ శారదాంబికాయై నమః ॥</div>
-              <div>Sarve Janah Sukhino Bhavantu</div>
-              <div>Item {idx + 1} of {tickets.length}</div>
+            <div style={{ textAlign: 'center', marginTop: '3mm', fontSize: '9.5px', borderTop: '1px dashed #000', paddingTop: '2mm', lineHeight: '1.4' }}>
+              <div style={{ fontWeight: 'bold' }}>॥ శ్రీ శారదాంబికాయై నమః ॥</div>
+              <div>సర్వే జనాః సుఖినో భవంతు • సమస్త సన్మంగళాని భవంతు</div>
+              <div style={{ marginTop: '1mm', fontSize: '8.5px' }}>సంకల్ప సమయమున ఈ రశీదును ఆలయ పూజారి వారికి అందజేయగలరు.</div>
+              <div style={{ marginTop: '1mm', fontSize: '8px' }}>రశీదు సంఖ్య {idx + 1} / మొత్తం {tickets.length}</div>
             </div>
           </div>
         ))}
@@ -227,4 +251,3 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
     </div>
   );
 };
-

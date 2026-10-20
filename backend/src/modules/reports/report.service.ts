@@ -46,8 +46,8 @@ export class ReportService {
          COUNT(b.id)::int as total_bookings,
          COALESCE(SUM(b.total_amount), 0)::numeric as booked_amount
        FROM bookings b
-       WHERE b.created_at::date >= $1::date
-         AND b.created_at::date <= $2::date
+       WHERE (b.created_at + INTERVAL '5 hours 30 minutes')::date >= $1::date
+         AND (b.created_at + INTERVAL '5 hours 30 minutes')::date <= $2::date
          AND b.booking_status != 'cancelled'`,
       [startDate, endDate]
     );
@@ -60,8 +60,8 @@ export class ReportService {
          COALESCE(SUM(bi.quantity), 0)::int as total_seva_items
        FROM booking_items bi
        JOIN bookings b ON bi.booking_id = b.id
-       WHERE b.created_at::date >= $1::date
-         AND b.created_at::date <= $2::date
+       WHERE (b.created_at + INTERVAL '5 hours 30 minutes')::date >= $1::date
+         AND (b.created_at + INTERVAL '5 hours 30 minutes')::date <= $2::date
          AND b.booking_status != 'cancelled'`,
       [startDate, endDate]
     );
@@ -75,8 +75,8 @@ export class ReportService {
          COUNT(id)::int as count,
          COALESCE(SUM(amount), 0)::numeric as total_amount
        FROM payments
-       WHERE created_at::date >= $1::date
-         AND created_at::date <= $2::date
+       WHERE (created_at + INTERVAL '5 hours 30 minutes')::date >= $1::date
+         AND (created_at + INTERVAL '5 hours 30 minutes')::date <= $2::date
        GROUP BY payment_method, payment_status`,
       [startDate, endDate]
     );
@@ -126,8 +126,8 @@ export class ReportService {
        FROM booking_items bi
        JOIN bookings b ON bi.booking_id = b.id
        LEFT JOIN sevas s ON bi.seva_id = s.id
-       WHERE b.created_at::date >= $1::date
-         AND b.created_at::date <= $2::date
+       WHERE (b.created_at + INTERVAL '5 hours 30 minutes')::date >= $1::date
+         AND (b.created_at + INTERVAL '5 hours 30 minutes')::date <= $2::date
          AND b.booking_status != 'cancelled'
        GROUP BY bi.seva_name_snapshot, s.category
        ORDER BY total_revenue DESC`,
@@ -137,8 +137,8 @@ export class ReportService {
     const sevaBreakdown = sevaStatsRes.rows.map(r => ({
       seva_name: r.seva_name,
       category: r.category,
-      total_quantity: r.total_quantity,
-      total_revenue: parseFloat(r.total_revenue)
+      total_quantity: parseInt(r.total_quantity, 10) || 0,
+      total_revenue: parseFloat(r.total_revenue || '0') || 0
     }));
 
     // 5. Staff activity
@@ -150,8 +150,8 @@ export class ReportService {
          COALESCE(SUM(b.total_amount), 0)::numeric as total_value
        FROM bookings b
        JOIN staff_users su ON b.created_by = su.id
-       WHERE b.created_at::date >= $1::date
-         AND b.created_at::date <= $2::date
+       WHERE (b.created_at + INTERVAL '5 hours 30 minutes')::date >= $1::date
+         AND (b.created_at + INTERVAL '5 hours 30 minutes')::date <= $2::date
          AND b.booking_status != 'cancelled'
        GROUP BY su.id, su.name
        ORDER BY booking_count DESC`,
@@ -161,8 +161,8 @@ export class ReportService {
     const staffActivity = staffStatsRes.rows.map(r => ({
       staff_id: r.staff_id,
       staff_name: r.staff_name,
-      booking_count: r.booking_count,
-      total_value: parseFloat(r.total_value)
+      booking_count: parseInt(r.booking_count, 10) || 0,
+      total_value: parseFloat(r.total_value || '0') || 0
     }));
 
     const paymentMethodBreakdown = Array.from(pmMap.entries()).map(([method, data]) => ({

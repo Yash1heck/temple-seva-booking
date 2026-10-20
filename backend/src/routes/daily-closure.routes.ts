@@ -1,3 +1,4 @@
+import { getTempleToday } from '../utils/date.js';
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { DailyClosureService } from '../modules/daily-closure/daily-closure.service.js';
@@ -7,7 +8,7 @@ export async function dailyClosureRoutes(fastify: FastifyInstance) {
   // Get Daily Closure Status (ADMIN ONLY)
   fastify.get('/status', { preHandler: [requireRole(['admin'])] }, async (request, reply) => {
     const query = request.query as any;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTempleToday();
     const targetDate = query.date || today;
 
     try {

@@ -1,3 +1,4 @@
+import { getTempleToday } from '../utils/date.js';
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { SevaService } from '../modules/sevas/seva.service.js';
@@ -12,7 +13,7 @@ export async function sevaRoutes(fastify: FastifyInstance) {
 
     if (user.role === 'poojari') {
       // Poojari should use poojari dashboard endpoint, but if calling list, restrict to their assigned sevas
-      const targetDate = query.date || new Date().toISOString().split('T')[0];
+      const targetDate = query.date || getTempleToday();
       return await SevaService.listAll({
         onlyActive: true,
         poojariId: user.id,

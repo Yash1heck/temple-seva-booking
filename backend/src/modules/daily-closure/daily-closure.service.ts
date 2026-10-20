@@ -41,7 +41,7 @@ export class DailyClosureService {
     // Count pending payments
     const pendingRes = await db.query(
       `SELECT COUNT(*)::int as count FROM payments
-       WHERE created_at::date = $1::date AND payment_status = 'pending'`,
+       WHERE (created_at + INTERVAL '5 hours 30 minutes')::date = $1::date AND payment_status = 'pending'`,
       [date]
     );
     const pendingCount = pendingRes.rows[0]?.count || 0;

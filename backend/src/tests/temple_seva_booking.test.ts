@@ -10,6 +10,7 @@ import { DevoteeService } from '../modules/devotees/devotee.service.js';
 import { ReportService } from '../modules/reports/report.service.js';
 import { RetentionService } from '../modules/retention/retention.service.js';
 import { PoojariService } from '../modules/poojari/poojari.service.js';
+import { getTempleToday, getTempleTomorrow } from '../utils/date.js';
 
 describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
   let app: FastifyInstance;
@@ -83,7 +84,7 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
     }, testDb);
 
     // Scheduled Seva for a future date (Tomorrow)
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const tomorrow = getTempleTomorrow();
     specialScheduledSeva = await SevaService.create({
       name: 'Test Special Pournami',
       price: 750.00,
@@ -224,7 +225,7 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
   });
 
   it('Rule 5: Consolidated payment is not double-counted across items', async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTempleToday();
     const bRes = await BookingService.createBooking({
       ritual_beneficiary_name: 'Consolidated Devotee',
       gothra: 'Vasishta',
@@ -245,6 +246,12 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
     const report = await ReportService.generateReport(today, today, testDb);
     // Verified: The report aggregates payments directly from payments table
     expect(report.financials.cash_total).toBeGreaterThanOrEqual(250.00);
+
+    // Verify listBookings query succeeds without error and returns the booking with items_summary
+    const listed = await BookingService.listBookings({ limit: 10 }, testDb);
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed[0]).toHaveProperty('items_summary');
+    expect(listed[0]).toHaveProperty('ticket_count');
   });
 
   it('Rule 8: Historical prices remain unchanged when the seva price changes', async () => {
@@ -323,7 +330,7 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
   });
 
   it('Payment 11 & 12: UPI can be recorded as pending and is NOT counted as confirmed collections', async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTempleToday();
     const initialReport = await ReportService.generateReport(today, today, testDb);
     const initialConfirmed = initialReport.financials.confirmed_amount;
 
@@ -499,7 +506,7 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
     expect(historicalBooking.booking.ritual_beneficiary_name).toBe('Devotee To Clean');
     expect(historicalBooking.booking.gothra).toBe('Harithasa');
     expect(historicalBooking.tickets.length).toBe(1);
-    expect(historicalBooking.payment.amount).toBe('50.00');
+    expect(Number(historicalBooking.payment.amount)).toBe(50);
   });
 
   it('Retention 25: Cleanup operations are auditable', async () => {
@@ -579,17 +586,17 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
   });
 
   it('Reliability 29: Daily report totals reconcile with their underlying records', async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTempleToday();
     const report = await ReportService.generateReport(today, today, testDb);
 
     const actualDbBookings = await testDb.query(
-      `SELECT COUNT(*)::int as count FROM bookings WHERE created_at::date = $1::date AND booking_status != 'cancelled'`,
+      `SELECT COUNT(*)::int as count FROM bookings WHERE (created_at + INTERVAL '5 hours 30 minutes')::date = $1::date AND booking_status != 'cancelled'`,
       [today]
     );
     expect(report.total_bookings).toBe(actualDbBookings.rows[0].count);
 
     const actualDbConfirmed = await testDb.query(
-      `SELECT COALESCE(SUM(amount), 0)::numeric as total FROM payments WHERE created_at::date = $1::date AND payment_status = 'confirmed'`,
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total FROM payments WHERE (created_at + INTERVAL '5 hours 30 minutes')::date = $1::date AND payment_status = 'confirmed'`,
       [today]
     );
     expect(report.financials.confirmed_amount).toBe(parseFloat(actualDbConfirmed.rows[0].total));
@@ -622,8 +629,8 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
   // =========================================================================
 
   it('Requirement 9: Scheduled pooja appears in booking catalogue, but appears on Poojari dashboard ONLY on scheduled date', async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const today = getTempleToday();
+    const tomorrow = getTempleTomorrow();
 
     // 1. Counter Booking catalogue check: Special scheduled seva IS visible for booking
     const bookingCatalogue = await SevaService.listAll({ onlyActive: true }, testDb);

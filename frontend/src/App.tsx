@@ -49,9 +49,9 @@ export const App: React.FC = () => {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen flex flex-col bg-[#FDFBF7]">
+        <div className="min-h-screen flex flex-col bg-transparent">
           <Navbar />
-          <main className="flex-1">
+          <main className="flex-1 pb-20 md:pb-6">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route
