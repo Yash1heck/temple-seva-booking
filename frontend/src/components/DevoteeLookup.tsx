@@ -18,10 +18,15 @@ export const DevoteeLookup: React.FC<DevoteeLookupProps> = ({
   payerName,
   setPayerName
 }) => {
-  const [query, setQuery] = useState(payerMobile);
+  const [query, setQuery] = useState(payerMobile || '');
   const [results, setResults] = useState<Devotee[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedDevotee, setSelectedDevotee] = useState<Devotee | null>(null);
+
+  // Synchronize internal query state whenever payerMobile prop updates (e.g. approving devotee request)
+  useEffect(() => {
+    setQuery(payerMobile || '');
+  }, [payerMobile]);
 
   useEffect(() => {
     if (!query || query.trim().length < 3) {

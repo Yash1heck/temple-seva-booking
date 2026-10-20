@@ -203,6 +203,14 @@ export const BookingCounterPage: React.FC = () => {
   const clearCart = () => {
     setCart([]);
     setErrorBanner(null);
+    setBeneficiaryName('');
+    setGothra('');
+    setFamilyDetails('');
+    setDevoteeId(null);
+    setPayerName('');
+    setPayerMobile('');
+    setUpiRef('');
+    setActiveDevoteeRequestId(null);
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.seva.price * item.quantity), 0);
