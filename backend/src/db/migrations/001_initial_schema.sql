@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS devotees (
 );
 
 CREATE INDEX IF NOT EXISTS idx_devotees_mobile ON devotees(mobile);
-CREATE INDEX IF NOT EXISTS idx_devotees_gothra ON devotees(gothra);
 CREATE INDEX IF NOT EXISTS idx_devotees_last_activity ON devotees(last_activity_at);
 
 CREATE TABLE IF NOT EXISTS sevas (
@@ -43,8 +42,7 @@ CREATE TABLE IF NOT EXISTS sevas (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_sevas_active ON sevas(is_active);
-CREATE INDEX IF NOT EXISTS idx_sevas_scheduled ON sevas(is_scheduled, scheduled_date);
+-- Low-cardinality boolean indexes on sevas omitted to prevent database advisor warnings
 
 CREATE TABLE IF NOT EXISTS poojari_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -75,7 +73,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(created_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(booking_status);
-CREATE INDEX IF NOT EXISTS idx_bookings_number ON bookings(booking_number);
+-- booking_number UNIQUE constraint already provides underlying btree index
 
 CREATE TABLE IF NOT EXISTS booking_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -110,7 +108,7 @@ CREATE TABLE IF NOT EXISTS tickets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tickets_booking_id ON tickets(booking_id);
-CREATE INDEX IF NOT EXISTS idx_tickets_ticket_number ON tickets(ticket_number);
+-- ticket_number UNIQUE constraint already provides underlying btree index
 
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

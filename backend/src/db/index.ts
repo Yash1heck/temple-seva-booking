@@ -148,9 +148,17 @@ export async function createTestDb(): Promise<IDatabaseClient> {
 }
 
 export async function runMigrations(client: IDatabaseClient): Promise<void> {
-  const migrationPath = path.join(__dirname, 'migrations/001_initial_schema.sql');
-  const sql = fs.readFileSync(migrationPath, 'utf8');
-  await client.exec(sql);
+  const migrationsDir = path.join(__dirname, 'migrations');
+  if (fs.existsSync(migrationsDir)) {
+    const files = fs.readdirSync(migrationsDir)
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    for (const file of files) {
+      const filePath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(filePath, 'utf8');
+      await client.exec(sql);
+    }
+  }
 }
 
 export async function closeDb(): Promise<void> {
