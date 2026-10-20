@@ -415,7 +415,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const isCurrentCompleted = currentCard ? !!completedMap[currentCard.ticket_number] : false;
 
   return (
-    <div className="space-y-3 max-w-md mx-auto select-none">
+    <div className="space-y-3 w-full max-w-full sm:max-w-md mx-auto select-none px-1 overflow-hidden">
       {/* Folder Header */}
       <div className="bg-[#FAF5EC] p-3 rounded-2xl border border-[#E8DCCE] flex items-center justify-between gap-2 shadow-xs">
         <button
@@ -427,11 +427,11 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           <span>ఫోల్డర్లు</span>
         </button>
 
-        <div className="text-center flex-1 px-1">
+        <div className="text-center flex-1 px-1 min-w-0">
           <h2 className="text-xs sm:text-sm font-bold text-[#7A1C23] font-serif truncate">
             {activeFolder.telugu_name || activeFolder.seva_name}
           </h2>
-          <div className="text-[10px] text-gray-500">
+          <div className="text-[10px] text-gray-500 truncate">
             {activeFolder.timing ? `⏰ ${activeFolder.timing} • ` : ''}మొత్తం: {activeFolder.registrations.length}
           </div>
         </div>
@@ -440,7 +440,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
         <button
           type="button"
           onClick={() => setFolderViewMode(m => (m === 'cards' ? 'list' : 'cards'))}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors shrink-0 ${
             folderViewMode === 'list'
               ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
               : 'bg-white text-gray-700 border-[#E8DCCE] hover:bg-[#F3ECE0]'
@@ -460,7 +460,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           className="w-full py-2.5 px-3 bg-gradient-to-r from-[#7A1C23] to-[#5C1217] hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 border border-amber-300/40"
         >
           <Zap className="w-4 h-4 text-amber-300" />
-          <span>
+          <span className="truncate">
             {isBatchCompleting
               ? 'పూజలు పూర్తవుతున్నాయి...'
               : `ఈ సేవలోని అన్ని పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయండి (${activeFolder.registrations.filter(t => !completedMap[t.ticket_number]).length})`}
@@ -469,12 +469,12 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
       )}
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between gap-1 px-1">
-        <div className="flex items-center gap-1 bg-[#FAF5EC] p-1 rounded-xl border border-[#E8DCCE]">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-0.5">
+        <div className="flex flex-wrap items-center gap-1 bg-[#FAF5EC] p-1 rounded-xl border border-[#E8DCCE]">
           <button
             type="button"
             onClick={() => { setCardFilter('pending'); setCurrentCardIndex(0); }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+            className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${
               cardFilter === 'pending'
                 ? 'bg-[#7A1C23] text-white shadow-2xs'
                 : 'text-gray-600 hover:text-[#7A1C23]'
@@ -485,7 +485,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           <button
             type="button"
             onClick={() => { setCardFilter('completed'); setCurrentCardIndex(0); }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+            className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${
               cardFilter === 'completed'
                 ? 'bg-[#7A1C23] text-white shadow-2xs'
                 : 'text-gray-600 hover:text-[#7A1C23]'
@@ -496,7 +496,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           <button
             type="button"
             onClick={() => { setCardFilter('all'); setCurrentCardIndex(0); }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+            className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-colors ${
               cardFilter === 'all'
                 ? 'bg-[#7A1C23] text-white shadow-2xs'
                 : 'text-gray-600 hover:text-[#7A1C23]'
@@ -506,7 +506,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           </button>
         </div>
 
-        <span className="text-[11px] font-bold text-gray-500 font-mono">
+        <span className="text-[11px] font-bold text-gray-500 font-mono px-1">
           {activeCards.length > 0 ? `${currentCardIndex + 1} / ${activeCards.length}` : '0 / 0'}
         </span>
       </div>

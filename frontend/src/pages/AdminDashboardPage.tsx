@@ -12,7 +12,7 @@ import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
   Lock, RefreshCw, FileText, Settings, History, CheckSquare,
-  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff
+  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff, Zap
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -25,6 +25,27 @@ export const AdminDashboardPage: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchBooking, setSearchBooking] = useState('');
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [isBulkCompletingOverview, setIsBulkCompletingOverview] = useState(false);
+
+  const handleAdminBatchComplete = async () => {
+    const confirmMsg = `శ్రీ శృంగేరి శారదా పీఠం సన్నిధానం:\n\nతేదీ: ${reportDate}\nఈ తేదీకి సంబంధించిన అన్ని పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయాలనుకుంటున్నారా?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsBulkCompletingOverview(true);
+    try {
+      await apiRequest('/poojari/batch-complete', {
+        method: 'POST',
+        body: JSON.stringify({ target_date: reportDate })
+      });
+      await loadBookings();
+      await loadOverview();
+      alert('ఈ తేదీకి సంబంధించిన పూజలు విజయవంతంగా పూర్తి చేయబడ్డాయి.');
+    } catch (err: any) {
+      alert(err.message || 'పూజలు నమోదు చేయడం విఫలమైంది');
+    } finally {
+      setIsBulkCompletingOverview(false);
+    }
+  };
 
   // Settings State
   const [isEditingUpi, setIsEditingUpi] = useState(false);
@@ -665,6 +686,16 @@ export const AdminDashboardPage: React.FC = () => {
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+            <button
+              type="button"
+              disabled={isBulkCompletingOverview}
+              onClick={handleAdminBatchComplete}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl text-xs font-bold shadow-2xs active:scale-95"
+              title="ఈ తేదీకి సంబంధించిన పూజలను ఒకేసారి పూర్తి చేయండి"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-200" />
+              <span>{isBulkCompletingOverview ? '...' : 'బల్క్ పూర్తి'}</span>
+            </button>
           </div>
         </div>
 
@@ -786,6 +817,15 @@ export const AdminDashboardPage: React.FC = () => {
                   className="px-3.5 py-1.5 bg-[#7A1C23] text-white rounded-xl text-xs font-bold hover:bg-[#5C1217] transition-colors shadow-2xs"
                 >
                   వెతుకుము
+                </button>
+                <button
+                  type="button"
+                  disabled={isBulkCompletingOverview}
+                  onClick={handleAdminBatchComplete}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:brightness-110 text-white rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-200" />
+                  <span>{isBulkCompletingOverview ? 'నమోదవుతున్నాయి...' : 'ఈ తేదీ పూజలను పూర్తి చేయండి (Bulk Complete)'}</span>
                 </button>
               </div>
             </div>
