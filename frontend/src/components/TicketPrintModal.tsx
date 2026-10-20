@@ -123,21 +123,29 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
               key={t.id}
               className="bg-white rounded-xl border border-[#E8DCCE] p-3.5 sm:p-4 shadow-xs relative space-y-2 text-xs text-[#2D2520] overflow-hidden"
             >
-              {/* Sacred Rubber Stamp Watermark for Completed Pooja */}
+              {/* Sacred Circular Rubber Stamp Watermark for Completed Pooja */}
               {(t.status === 'completed' || !!t.completed_at) && (
-                <div className="absolute top-2 right-20 sm:right-28 pointer-events-none select-none z-10 transform -rotate-12 opacity-95">
-                  <div className="border-2 border-dashed border-red-600 bg-red-50/95 text-red-700 px-3 py-1 rounded-lg shadow-sm flex flex-col items-center">
-                    <span className="text-[10px] sm:text-xs font-black tracking-wider uppercase flex items-center gap-1">
-                      ★ నిర్వహించబడినది ★
-                    </span>
-                    <span className="text-[9px] font-extrabold text-red-600">
-                      POOJA COMPLETED
-                    </span>
-                    {t.completed_at && (
-                      <span className="text-[8px] text-red-800 font-mono mt-0.5">
-                        {formatTempleDateTime(t.completed_at)}
+                <div className="absolute top-2 right-12 sm:right-24 pointer-events-none select-none z-10 transform -rotate-12 opacity-95">
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-2 border-dashed border-red-600/90 p-1 flex items-center justify-center shadow-xs">
+                    <div className="w-full h-full rounded-full border border-red-600 bg-red-50/95 flex flex-col items-center justify-center text-center p-1.5 text-red-700">
+                      <span className="text-[8px] font-bold text-red-800 tracking-tight leading-none">
+                        ★ శ్రీ శృంగేరి శారదా పీఠం ★
                       </span>
-                    )}
+                      <span className="text-xs font-serif font-bold text-red-800 leading-none my-0.5">
+                        ॐ
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider leading-tight text-red-700">
+                        నిర్వహించబడింది
+                      </span>
+                      <span className="text-[8.5px] font-extrabold tracking-widest text-red-600 leading-none mt-0.5">
+                        COMPLETED
+                      </span>
+                      {t.completed_at && (
+                        <span className="text-[7.5px] text-red-800 font-mono leading-none mt-1">
+                          {formatTempleDateTime(t.completed_at)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -264,33 +272,49 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
               <div style={{ fontSize: '12px' }}><strong>సేవా రుసుము:</strong> <strong>రూ. {formatCurrency(t.amount)}/-</strong></div>
               <div><strong>చెల్లింపు విధానం:</strong> {t.payment_method === 'cash' ? 'నగదు చెల్లింపు (స్వీకరించబడింది)' : 'యూపీఐ డిజిటల్ చెల్లింపు (స్వీకరించబడింది)'}</div>
               
-              {/* Anti-Fraud Completed Pooja Thermal Box */}
+              {/* Anti-Fraud Completed Pooja Circular Thermal Seal */}
               {(t.status === 'completed' || !!t.completed_at) && (
                 <div style={{
-                  margin: '2mm 0',
-                  border: '2px solid #000',
-                  padding: '1.5mm',
+                  margin: '3mm auto',
+                  width: '32mm',
+                  height: '32mm',
+                  borderRadius: '50%',
+                  border: '2px dashed #000',
+                  padding: '1mm',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   textAlign: 'center',
                   background: '#fff'
                 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '0.5px' }}>
-                    ★ నిర్వహించబడినది / POOJA COMPLETED ★
-                  </div>
-                  <div style={{ fontSize: '9px', fontWeight: 'bold', margin: '0.5mm 0' }}>
-                    ఈ పూజా సేవ ఆలయ గర్భగుడిలో సంకల్పముతో నిర్వహించబడింది
-                  </div>
-                  {t.completed_at && (
-                    <div style={{ fontSize: '8.5px' }}>
-                      సమయం: {formatTempleDateTime(t.completed_at)}
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    border: '1px solid #000',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1mm'
+                  }}>
+                    <div style={{ fontSize: '7.5px', fontWeight: 'bold' }}>
+                      ★ శ్రీ శృంగేరి శారదా పీఠం ★
                     </div>
-                  )}
-                  {t.completed_by_name && (
-                    <div style={{ fontSize: '8.5px' }}>
-                      అర్చకులు: {t.completed_by_name}
+                    <div style={{ fontSize: '9px', fontWeight: 'bold', margin: '0.5mm 0' }}>
+                      ॐ
                     </div>
-                  )}
-                  <div style={{ fontSize: '8px', fontWeight: 'bold', marginTop: '0.5mm', textDecoration: 'underline' }}>
-                    (గమనిక: ఈ రశీదు ఇప్పటికే పూర్తయింది • పునఃపూజకు చెల్లదు)
+                    <div style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', lineHeight: 1.1 }}>
+                      నిర్వహించబడింది
+                    </div>
+                    <div style={{ fontSize: '8px', fontWeight: '800', letterSpacing: '0.8px' }}>
+                      COMPLETED
+                    </div>
+                    {t.completed_at && (
+                      <div style={{ fontSize: '7px', marginTop: '0.5mm' }}>
+                        {formatTempleDateTime(t.completed_at)}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

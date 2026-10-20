@@ -318,6 +318,157 @@ export async function seedInitialData(db: IDatabaseClient): Promise<void> {
     }
   }
 
+  // 7. Seed Sample Bookings & Tickets (if bookings table is empty)
+  const bookingsCountRes = await db.query(`SELECT COUNT(*) as count FROM bookings`);
+  const bookingsCount = parseInt(bookingsCountRes.rows[0]?.count || '0', 10);
+
+  if (bookingsCount <= 1) {
+    const staffRes = await db.query(`SELECT id FROM staff_users WHERE role IN ('booking_staff', 'admin') LIMIT 1`);
+    const staffId = staffRes.rows[0]?.id;
+
+    const poojariRes = await db.query(`SELECT id, name FROM staff_users WHERE role = 'poojari' LIMIT 1`);
+    const seedPoojariId = poojariRes.rows[0]?.id;
+
+    const devListRes = await db.query(`SELECT id, mobile, name, gothra, family_details FROM devotees LIMIT 3`);
+    const devList = devListRes.rows;
+
+    const sevaArchanaRes = await db.query(`SELECT id, name, price FROM sevas WHERE LOWER(name) LIKE '%archana%' LIMIT 1`);
+    const sevaAbhishekamRes = await db.query(`SELECT id, name, price FROM sevas WHERE LOWER(name) LIKE '%abhishekam%' LIMIT 1`);
+    const sevaRudraRes = await db.query(`SELECT id, name, price FROM sevas WHERE LOWER(name) LIKE '%rudra%' LIMIT 1`);
+
+    const sevaArchana = sevaArchanaRes.rows[0];
+    const sevaAbhishekam = sevaAbhishekamRes.rows[0];
+    const sevaRudra = sevaRudraRes.rows[0];
+
+    if (devList.length > 0 && sevaArchana && staffId) {
+      // Booking 1: Yesterday's completed booking
+      const b1Dev = devList[0];
+      const b1Price = parseFloat(sevaRudra?.price || '200');
+      const b1Res = await db.query(
+        `INSERT INTO bookings (
+          booking_number, devotee_id, payer_name, payer_mobile,
+          ritual_beneficiary_name, gothra, family_details,
+          total_amount, booking_status, created_by, created_at
+        ) VALUES (
+          'B-00001', $1, $2, $3, $2, $4, $5, $6, 'completed', $7, NOW() - INTERVAL '1 day'
+        ) RETURNING id`,
+        [b1Dev.id, b1Dev.name, b1Dev.mobile, b1Dev.gothra, b1Dev.family_details, b1Price, staffId]
+      );
+      const b1Id = b1Res.rows[0]?.id;
+
+      if (b1Id) {
+        const item1Res = await db.query(
+          `INSERT INTO booking_items (
+            booking_id, seva_id, seva_name_snapshot, seva_price_snapshot,
+            quantity, item_total, scheduled_date_snapshot, created_at
+          ) VALUES ($1, $2, $3, $4, 1, $4, (CURRENT_DATE - INTERVAL '1 day')::date, NOW() - INTERVAL '1 day')
+          RETURNING id`,
+          [b1Id, (sevaRudra || sevaArchana).id, (sevaRudra || sevaArchana).name, b1Price]
+        );
+        const item1Id = item1Res.rows[0]?.id;
+
+        await db.query(
+          `INSERT INTO tickets (
+            ticket_number, booking_id, booking_item_id, item_index,
+            seva_name, ritual_beneficiary_name, gothra, family_details,
+            amount, status, reprint_count, completed_at, completed_by, created_at
+          ) VALUES (
+            'B-00001-01', $1, $2, 1, $3, $4, $5, $6, $7, 'completed', 0, NOW() - INTERVAL '23 hours', $8, NOW() - INTERVAL '1 day'
+          )`,
+          [b1Id, item1Id, (sevaRudra || sevaArchana).name, b1Dev.name, b1Dev.gothra, b1Dev.family_details, b1Price, seedPoojariId]
+        );
+
+        await db.query(
+          `INSERT INTO payments (
+            booking_id, amount, payment_method, payment_status, verified_by, verified_at, created_at
+          ) VALUES ($1, $2, 'cash', 'confirmed', $3, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day')`,
+          [b1Id, b1Price, staffId]
+        );
+      }
+
+      // Booking 2: Today's active booking (Archana + Abhishekam)
+      const b2Dev = devList[1] || devList[0];
+      const pArch = parseFloat(sevaArchana.price || '50');
+      const pAbhi = parseFloat(sevaAbhishekam?.price || '200');
+      const b2Total = pArch * 2 + pAbhi;
+
+      const b2Res = await db.query(
+        `INSERT INTO bookings (
+          booking_number, devotee_id, payer_name, payer_mobile,
+          ritual_beneficiary_name, gothra, family_details,
+          total_amount, booking_status, created_by, created_at
+        ) VALUES (
+          'B-00002', $1, $2, $3, $2, $4, $5, $6, 'completed', $7, NOW()
+        ) RETURNING id`,
+        [b2Dev.id, b2Dev.name, b2Dev.mobile, b2Dev.gothra, b2Dev.family_details, b2Total, staffId]
+      );
+      const b2Id = b2Res.rows[0]?.id;
+
+      if (b2Id) {
+        // Item 1: Archana (qty 2)
+        const itArchRes = await db.query(
+          `INSERT INTO booking_items (
+            booking_id, seva_id, seva_name_snapshot, seva_price_snapshot,
+            quantity, item_total, scheduled_date_snapshot, created_at
+          ) VALUES ($1, $2, $3, $4, 2, $5, CURRENT_DATE, NOW())
+          RETURNING id`,
+          [b2Id, sevaArchana.id, sevaArchana.name, pArch, pArch * 2]
+        );
+        const itArchId = itArchRes.rows[0]?.id;
+
+        // Ticket 1: Issued (Pending)
+        await db.query(
+          `INSERT INTO tickets (
+            ticket_number, booking_id, booking_item_id, item_index,
+            seva_name, ritual_beneficiary_name, gothra, family_details,
+            amount, status, reprint_count, created_at
+          ) VALUES ('B-00002-01', $1, $2, 1, $3, $4, $5, $6, $7, 'issued', 0, NOW())`,
+          [b2Id, itArchId, sevaArchana.name, b2Dev.name, b2Dev.gothra, b2Dev.family_details, pArch]
+        );
+
+        // Ticket 2: Completed today
+        await db.query(
+          `INSERT INTO tickets (
+            ticket_number, booking_id, booking_item_id, item_index,
+            seva_name, ritual_beneficiary_name, gothra, family_details,
+            amount, status, reprint_count, completed_at, completed_by, created_at
+          ) VALUES ('B-00002-02', $1, $2, 2, $3, $4, $5, $6, $7, 'completed', 0, NOW() - INTERVAL '30 minutes', $8, NOW())`,
+          [b2Id, itArchId, sevaArchana.name, b2Dev.name, b2Dev.gothra, b2Dev.family_details, pArch, seedPoojariId]
+        );
+
+        // Item 2: Abhishekam (qty 1)
+        if (sevaAbhishekam) {
+          const itAbhiRes = await db.query(
+            `INSERT INTO booking_items (
+              booking_id, seva_id, seva_name_snapshot, seva_price_snapshot,
+              quantity, item_total, scheduled_date_snapshot, created_at
+            ) VALUES ($1, $2, $3, $4, 1, $4, CURRENT_DATE, NOW())
+            RETURNING id`,
+            [b2Id, sevaAbhishekam.id, sevaAbhishekam.name, pAbhi]
+          );
+          const itAbhiId = itAbhiRes.rows[0]?.id;
+
+          // Ticket 3: Issued (Pending)
+          await db.query(
+            `INSERT INTO tickets (
+              ticket_number, booking_id, booking_item_id, item_index,
+              seva_name, ritual_beneficiary_name, gothra, family_details,
+              amount, status, reprint_count, created_at
+            ) VALUES ('B-00002-03', $1, $2, 3, $3, $4, $5, $6, $7, 'issued', 0, NOW())`,
+            [b2Id, itAbhiId, sevaAbhishekam.name, b2Dev.name, b2Dev.gothra, b2Dev.family_details, pAbhi]
+          );
+        }
+
+        await db.query(
+          `INSERT INTO payments (
+            booking_id, amount, payment_method, payment_status, verified_by, verified_at, created_at
+          ) VALUES ($1, $2, 'upi', 'confirmed', $3, NOW(), NOW())`,
+          [b2Id, b2Total, staffId]
+        );
+      }
+    }
+  }
+
   console.log('Seeding completed successfully!');
 }
 

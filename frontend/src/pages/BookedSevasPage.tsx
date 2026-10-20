@@ -85,6 +85,18 @@ export const BookedSevasPage: React.FC = () => {
     return list;
   }, [bookings, filterMode, selectedDate, ritualStatusFilter]);
 
+  const ritualCounts = useMemo(() => {
+    let pending = 0;
+    let completed = 0;
+    bookings.forEach(b => {
+      const isCompleted = Number(b.completed_ticket_count || 0) > 0;
+      const isPending = Number(b.completed_ticket_count || 0) < Number(b.ticket_count || 1);
+      if (isCompleted) completed++;
+      if (isPending) pending++;
+    });
+    return { all: bookings.length, pending, completed };
+  }, [bookings]);
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-32 lg:pb-12">
       {/* Top Banner */}
@@ -261,7 +273,7 @@ export const BookedSevasPage: React.FC = () => {
                       : 'bg-white text-gray-700 hover:bg-gray-50 border border-[#E8DCCE]'
                   }`}
                 >
-                  అన్ని పూజలు
+                  అన్ని పూజలు ({ritualCounts.all})
                 </button>
                 <button
                   type="button"
@@ -272,7 +284,7 @@ export const BookedSevasPage: React.FC = () => {
                       : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
                   }`}
                 >
-                  ⏳ నిర్వహించవలసినవి (Pending)
+                  ⏳ నిర్వహించవలసినవి ({ritualCounts.pending})
                 </button>
                 <button
                   type="button"
@@ -283,7 +295,7 @@ export const BookedSevasPage: React.FC = () => {
                       : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300'
                   }`}
                 >
-                  ★ నిర్వహించినవి (Completed)
+                  ★ నిర్వహించినవి ({ritualCounts.completed})
                 </button>
               </div>
             </div>

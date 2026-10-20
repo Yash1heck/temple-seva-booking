@@ -55,17 +55,20 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const [flyDirection, setFlyDirection] = useState<'right' | 'left' | null>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Persistent completed tickets
+  // Fast memory state synced with database ticket status
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(`temple_completed_tickets_${selectedDate}`);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+    const map: Record<string, boolean> = {};
+    rituals.forEach(r => {
+      r.registrations.forEach(reg => {
+        if (reg.status === 'completed' || !!(reg as any).completed_at) {
+          map[reg.ticket_number] = true;
+        }
+      });
+    });
+    return map;
   });
 
-  // Sync server completion status into completedMap whenever rituals change
+  // Keep completedMap synchronized with rituals whenever rituals update from backend
   useEffect(() => {
     setCompletedMap(prev => {
       const next = { ...prev };
@@ -81,32 +84,11 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   }, [rituals]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(`temple_completed_tickets_${selectedDate}`, JSON.stringify(completedMap));
-    } catch (e) {
-      console.error('Failed to save completed tickets map', e);
-    }
-  }, [completedMap, selectedDate]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`temple_completed_tickets_${selectedDate}`);
-      const map = saved ? JSON.parse(saved) : {};
-      rituals.forEach(r => {
-        r.registrations.forEach(reg => {
-          if (reg.status === 'completed' || !!(reg as any).completed_at) {
-            map[reg.ticket_number] = true;
-          }
-        });
-      });
-      setCompletedMap(map);
-      setActiveFolderId(null);
-      setCurrentCardIndex(0);
-      setDragOffset({ x: 0, y: 0 });
-      setFlyDirection(null);
-    } catch {
-      setCompletedMap({});
-    }
+    // Reset folder view when date switches
+    setActiveFolderId(null);
+    setCurrentCardIndex(0);
+    setDragOffset({ x: 0, y: 0 });
+    setFlyDirection(null);
   }, [selectedDate]);
 
   const toggleTicketCompletion = (ticketNumber: string) => {
@@ -126,6 +108,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
         method: 'POST',
         body: JSON.stringify({ ticket_number: ticketNumber })
       });
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Failed to mark ticket completed on server:', err);
     }
@@ -317,7 +300,14 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
               <div
                 key={seva.seva_id}
                 onClick={() => {
-                  if (stats.total > 0) setActiveFolderId(seva.seva_id);
+                  if (stats.total > 0) {
+                    setActiveFolderId(seva.seva_id);
+                    if (stats.pending === 0 && stats.completed > 0) {
+                      setCardFilter('completed');
+                    } else {
+                      setCardFilter('pending');
+                    }
+                  }
                 }}
                 className={`group relative pt-3 transition-transform duration-150 ${
                   isZero ? 'cursor-not-allowed' : 'cursor-pointer active:scale-95'
@@ -587,8 +577,17 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                 అన్ని సంకల్పాలు పూర్తయ్యాయి!
               </h3>
               <p className="text-[11px] text-gray-500">
-                తదుపరి పూజా ఫోల్డర్‌ను ఎంచుకోండి.
+                తదుపరి పూజా ఫోల్డర్‌ను ఎంచుకోండి లేదా పూర్తయిన సంకల్పాలను చూడండి.
               </p>
+              {activeFolder.registrations.filter(t => !!completedMap[t.ticket_number]).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCardFilter('completed')}
+                  className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors shadow-2xs"
+                >
+                  <span>పూర్తయిన సంకల్పాలు ({activeFolder.registrations.filter(t => !!completedMap[t.ticket_number]).length}) చూడండి</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">

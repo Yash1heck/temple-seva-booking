@@ -182,9 +182,9 @@ export const DevoteeBookingPage: React.FC = () => {
           </div>
 
           {/* Token Card */}
-          <div className="bg-[#FAF5EC] p-5 rounded-2xl border-2 border-dashed border-[#C86A1B] text-center space-y-3">
+          <div className="bg-[#FAF5EC] p-5 rounded-2xl border-2 border-dashed border-[#C86A1B] text-center space-y-2">
             <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">మీ పూజా టోకెన్ సంఖ్య</span>
-            <div className="text-3xl sm:text-4xl font-mono font-black text-[#7A1C23]">
+            <div className="text-3xl sm:text-4xl font-mono font-black text-[#7A1C23] tracking-wider">
               {submittedRequest.request_number}
             </div>
             <div className="text-xs text-amber-950">
@@ -222,27 +222,20 @@ export const DevoteeBookingPage: React.FC = () => {
           {/* Counter Instructions */}
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 text-left space-y-1">
             <div className="font-bold flex items-center gap-1.5 text-amber-900">
-              <span>ℹ️</span> తదుపరి చర్య:
+              <span>ℹ️</span> ఆలయ కౌంటర్ సూచన:
             </div>
             <p>
               ఆలయ కౌంటర్‌లో సిబ్బందికి మీ <strong>మొబైల్ సంఖ్య ({submittedRequest.mobile})</strong> లేదా <strong>టోకెన్ సంఖ్య ({submittedRequest.request_number})</strong> తెలియజేసి, నగదు లేదా యూపీఐ ద్వారా చెల్లింపు పూర్తి చేసి పూజా రశీదును పొందగలరు.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="pt-2">
             <button
               type="button"
               onClick={() => setSubmittedRequest(null)}
-              className="flex-1 py-2.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+              className="w-full py-3 bg-[#7A1C23] hover:bg-[#5C1217] active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
             >
-              మరో పూజా సేవను నమోదు చేయండి
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="py-2.5 px-4 bg-white border border-[#E8DCCE] text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50"
-            >
-              టోకెన్ ముద్రించండి
+              <span>+ మరో పూజా సేవను నమోదు చేయండి</span>
             </button>
           </div>
         </div>
