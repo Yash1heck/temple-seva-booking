@@ -229,13 +229,20 @@ export const DevoteeBookingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
             <button
               type="button"
               onClick={() => setSubmittedRequest(null)}
-              className="w-full py-3 bg-[#7A1C23] hover:bg-[#5C1217] active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-white border border-[#E8DCCE] hover:bg-[#FAF5EC] text-[#7A1C23] active:scale-[0.98] text-xs sm:text-sm font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
-              <span>+ మరో పూజా సేవను నమోదు చేయండి</span>
+              <span>← హోమ్ / సేవల జాబితా</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubmittedRequest(null)}
+              className="flex-1 py-3 bg-[#7A1C23] hover:bg-[#5C1217] active:scale-[0.98] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+            >
+              <span>+ మరో పూజా సేవ</span>
             </button>
           </div>
         </div>

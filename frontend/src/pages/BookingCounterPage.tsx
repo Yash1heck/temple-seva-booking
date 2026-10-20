@@ -133,69 +133,6 @@ export const BookingCounterPage: React.FC = () => {
     }, 150);
   };
 
-  const handleInstantApproveAndBill = async (req: DevoteeBookingRequest, pMethod: 'cash' | 'upi' = 'cash') => {
-    setIsSubmitting(true);
-    const idempotencyKey = `devotee-approve-${req.id}-${Date.now()}`;
-    try {
-      const todayStr = getTempleToday();
-      const payload = {
-        payer_name: req.devotee_name,
-        payer_mobile: req.mobile,
-        ritual_beneficiary_name: req.devotee_name,
-        gothra: req.gothra,
-        family_details: req.family_details || null,
-        items: req.items.map(it => {
-          const matchedSeva = sevas.find(s => s.id === it.seva_id);
-          return {
-            seva_id: it.seva_id,
-            quantity: it.quantity || 1,
-            ritual_beneficiary_name: req.devotee_name,
-            gothra: req.gothra,
-            scheduled_date: it.scheduled_date || (matchedSeva?.is_scheduled ? matchedSeva.scheduled_date : todayStr)
-          };
-        }),
-        payment: {
-          method: pMethod,
-          status: 'confirmed',
-          transaction_reference: null
-        },
-        client_submitted_total: req.total_amount,
-        idempotency_key: idempotencyKey
-      };
-
-      const res = await apiRequest<{
-        booking: any;
-        items: any[];
-        tickets: Ticket[];
-        payment: any;
-      }>('/bookings', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-
-      // Mark request approved on backend
-      try {
-        await apiRequest(`/devotee-requests/${req.id}/approve`, {
-          method: 'PATCH',
-          body: JSON.stringify({ booking_id: res.booking.id })
-        });
-      } catch (e) {
-        console.error('Failed to patch devotee request status', e);
-      }
-
-      // Open print modal immediately
-      setPrintedBookingNumber(res.booking.booking_number);
-      setIssuedTickets(res.tickets);
-      setPrintModalOpen(true);
-      setIsPendingModalOpen(false);
-      loadPendingRequests();
-    } catch (err: any) {
-      alert(`ఆమోదం విఫలమైంది: ${err.message || 'Error processing booking'}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Categories
   const categories = ['అన్ని పూజలు', ...Array.from(new Set(sevas.map(s => s.category)))];
 
@@ -726,6 +663,22 @@ export const BookingCounterPage: React.FC = () => {
               )}
             </div>
 
+            {/* Devotee Request Processing Alert */}
+            {activeDevoteeRequestId && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                <div className="text-xs text-amber-950 font-medium">
+                  <span className="font-bold text-amber-900">🔔 భక్తుని అభ్యర్థన పరిశీలన:</span> భక్తుని వద్ద నుండి నగదు లేదా యూపీఐ చెల్లింపు స్వీకరించి రసీదు నమోదు చేయండి.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setActiveDevoteeRequestId(null); clearCart(); }}
+                  className="shrink-0 text-[11px] font-bold text-red-700 hover:text-red-900 underline"
+                >
+                  రద్దు చేయండి
+                </button>
+              </div>
+            )}
+
             {/* Total Amount Summary */}
             <div className="p-3.5 bg-[#FAF5EC] rounded-xl border border-[#E8DCCE] space-y-1 text-xs">
               <div className="flex justify-between items-center text-gray-600">
@@ -991,28 +944,17 @@ export const BookingCounterPage: React.FC = () => {
                       {/* Action Bar */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[#E8DCCE]/60">
                         <div>
-                          <span className="text-[11px] text-gray-500">మొత్తం రుసుము: </span>
+                          <span className="text-[11px] text-gray-500">సేకరించవలసిన రుసుము: </span>
                           <span className="text-sm font-black font-mono text-[#7A1C23]">₹{req.total_amount.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleApproveDevoteeRequest(req)}
-                            className="px-2.5 py-1.5 bg-[#FAF5EC] hover:bg-[#F3ECE0] text-[#7A1C23] border border-[#E8DCCE] rounded-lg text-xs font-bold transition-all"
-                            title="కౌంటర్ కార్ట్‌లోకి లోడ్ చేసి చెల్లింపు విధానాన్ని ఎంచుకోండి"
-                          >
-                            కార్ట్‌లోకి లోడ్
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={() => handleInstantApproveAndBill(req, 'cash')}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] disabled:bg-gray-300 text-white rounded-lg text-xs font-bold shadow-xs active:scale-95 transition-all"
-                          >
-                            <span>⚡ తక్షణ ఆమోదం & రసీదు</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApproveDevoteeRequest(req)}
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg text-xs font-bold shadow-xs active:scale-95 transition-all"
+                        >
+                          <span>ఆమోదించి చెల్లింపు నమోదు చేయండి</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
+                        </button>
                       </div>
                     </div>
                   ))

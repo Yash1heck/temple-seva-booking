@@ -211,25 +211,26 @@ export const BookedSevasPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Clean Filter Pills & Ritual Completion Status */}
-            <div className="space-y-2 pt-2 border-t border-[#E8DCCE]/60">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-bold text-gray-500 mr-1">తేదీ ఫిల్టర్:</span>
+            {/* Ultra-Clean Single-Row Horizontal Filter Tracks (Zero Mobile Clutter) */}
+            <div className="space-y-1.5 pt-2 border-t border-[#E8DCCE]/60">
+              {/* Date Filter Track */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <span className="text-[11px] font-bold text-gray-500 shrink-0 mr-0.5">తేదీ:</span>
                 <button
                   type="button"
                   onClick={() => setFilterMode('booking_date')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     filterMode === 'booking_date'
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
                   }`}
                 >
-                  కౌంటర్ తేదీ ({selectedDate})
+                  కౌంటర్ ({selectedDate})
                 </button>
                 <button
                   type="button"
                   onClick={() => setFilterMode('scheduled_date')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     filterMode === 'scheduled_date'
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
@@ -240,18 +241,18 @@ export const BookedSevasPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFilterMode('future_only')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     filterMode === 'future_only'
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
                   }`}
                 >
-                  ముందస్తు బుకింగ్‌లు
+                  ముందస్తు
                 </button>
                 <button
                   type="button"
                   onClick={() => setFilterMode('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     filterMode === 'all'
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
@@ -261,41 +262,41 @@ export const BookedSevasPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Ritual Completion Status Pills */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-bold text-gray-500 mr-1">పూజా స్థితి:</span>
+              {/* Ritual Completion Status Track */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                <span className="text-[11px] font-bold text-gray-500 shrink-0 mr-0.5">స్థితి:</span>
                 <button
                   type="button"
                   onClick={() => setRitualStatusFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     ritualStatusFilter === 'all'
                       ? 'bg-[#C86A1B] text-white shadow-xs'
                       : 'bg-white text-gray-700 hover:bg-gray-50 border border-[#E8DCCE]'
                   }`}
                 >
-                  అన్ని పూజలు ({ritualCounts.all})
+                  అన్నీ ({ritualCounts.all})
                 </button>
                 <button
                   type="button"
                   onClick={() => setRitualStatusFilter('pending')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     ritualStatusFilter === 'pending'
                       ? 'bg-amber-600 text-white shadow-xs'
                       : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
                   }`}
                 >
-                  ⏳ నిర్వహించవలసినవి ({ritualCounts.pending})
+                  ⏳ పెండింగ్ ({ritualCounts.pending})
                 </button>
                 <button
                   type="button"
                   onClick={() => setRitualStatusFilter('completed')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     ritualStatusFilter === 'completed'
                       ? 'bg-emerald-700 text-white shadow-xs'
                       : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300'
                   }`}
                 >
-                  ★ నిర్వహించినవి ({ritualCounts.completed})
+                  ★ పూర్తయినవి ({ritualCounts.completed})
                 </button>
               </div>
             </div>

@@ -141,14 +141,18 @@ export class PoojariService {
       throw new Error('Ticket not found');
     }
 
+    const targetTicket = existingRes.rows[0];
+    const bookingItemId = targetTicket.booking_item_id;
+
+    // Mark the ticket and all sibling tickets for this devotee's seva item completed
     const res = await db.query(
       `UPDATE tickets
        SET status = 'completed',
-           completed_at = NOW(),
-           completed_by = $2
-       WHERE ticket_number = $1
+           completed_at = COALESCE(completed_at, NOW()),
+           completed_by = COALESCE(completed_by, $2)
+       WHERE booking_item_id = $1 OR ticket_number = $3
        RETURNING id, ticket_number, booking_id, status, completed_at, completed_by`,
-      [cleanNumber, poojariId]
+      [bookingItemId, poojariId, cleanNumber]
     );
 
     // Audit log
