@@ -210,6 +210,7 @@ export const BookingCounterPage: React.FC = () => {
     setPayerName('');
     setPayerMobile('');
     setUpiRef('');
+    setRitualDate(getTempleToday());
     setActiveDevoteeRequestId(null);
   };
 
