@@ -46,6 +46,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [sevas, setSevas] = useState<Seva[]>([]);
   const [poojaris, setPoojaris] = useState<User[]>([]);
   const [isCreatingSeva, setIsCreatingSeva] = useState(false);
+  const [isCreatingSevaLoading, setIsCreatingSevaLoading] = useState(false);
   const [editingSeva, setEditingSeva] = useState<Seva | null>(null);
   const [editingSevaForm, setEditingSevaForm] = useState({
     name: '',
@@ -74,6 +75,7 @@ export const AdminDashboardPage: React.FC = () => {
   // Users Management
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isCreatingUserLoading, setIsCreatingUserLoading] = useState(false);
   const [newUser, setNewUser] = useState({
     username: '',
     name: '',
@@ -358,6 +360,8 @@ export const AdminDashboardPage: React.FC = () => {
 
   const handleCreateSeva = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingSevaLoading) return;
+    setIsCreatingSevaLoading(true);
     try {
       await apiRequest('/sevas', {
         method: 'POST',
@@ -378,9 +382,11 @@ export const AdminDashboardPage: React.FC = () => {
         timing: '',
         assigned_poojari_ids: []
       });
-      loadSevas();
+      await loadSevas();
     } catch (err: any) {
       alert(err.message || 'Failed to create seva');
+    } finally {
+      setIsCreatingSevaLoading(false);
     }
   };
 
@@ -433,6 +439,8 @@ export const AdminDashboardPage: React.FC = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingUserLoading) return;
+    setIsCreatingUserLoading(true);
     try {
       await apiRequest('/auth/users', {
         method: 'POST',
@@ -440,9 +448,11 @@ export const AdminDashboardPage: React.FC = () => {
       });
       setIsCreatingUser(false);
       setNewUser({ username: '', name: '', role: 'poojari', password: '' });
-      loadUsers();
+      await loadUsers();
     } catch (err: any) {
       alert(err.message || 'Failed to create user');
+    } finally {
+      setIsCreatingUserLoading(false);
     }
   };
 
@@ -1164,9 +1174,17 @@ export const AdminDashboardPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-[#7A1C23] text-white rounded font-semibold"
+                    disabled={isCreatingSevaLoading}
+                    className="px-4 py-1.5 bg-[#7A1C23] text-white rounded font-semibold disabled:opacity-50 flex items-center gap-2 hover:bg-[#5C1217] transition-all"
                   >
-                    సేవను భద్రపరచండి
+                    {isCreatingSevaLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>సేవ్ అవుతోంది... (Saving...)</span>
+                      </>
+                    ) : (
+                      <span>సేవను భద్రపరచండి</span>
+                    )}
                   </button>
                 </div>
               </form>
@@ -1597,9 +1615,17 @@ export const AdminDashboardPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#7A1C23] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#5C1217]"
+                    disabled={isCreatingUserLoading}
+                    className="px-5 py-2 bg-[#7A1C23] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#5C1217] disabled:opacity-50 flex items-center gap-2 transition-all"
                   >
-                    ఖాతా సృష్టించు (Create Account)
+                    {isCreatingUserLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span>సృష్టిస్తోంది... (Creating...)</span>
+                      </>
+                    ) : (
+                      <span>ఖాతా సృష్టించు (Create Account)</span>
+                    )}
                   </button>
                 </div>
               </form>

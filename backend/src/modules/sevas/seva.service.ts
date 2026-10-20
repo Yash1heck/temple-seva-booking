@@ -119,6 +119,35 @@ export class SevaService {
       throw new Error('Price cannot be negative');
     }
 
+    const trimmedName = data.name.trim();
+
+    // Idempotency: prevent rapid multi-clicks or duplicate creation of same seva
+    const existing = await db.query(
+      `SELECT id, name, telugu_name, description, category, price::numeric as price,
+              is_active, is_scheduled, scheduled_date::text as scheduled_date, timing,
+              created_at, updated_at
+       FROM sevas
+       WHERE LOWER(TRIM(name)) = LOWER($1)
+       LIMIT 1`,
+      [trimmedName]
+    );
+
+    if (existing.rows.length > 0) {
+      const existingSeva = existing.rows[0];
+      if (data.assigned_poojari_ids && data.assigned_poojari_ids.length > 0) {
+        for (const poojariId of data.assigned_poojari_ids) {
+          await db.query(
+            `INSERT INTO poojari_assignments (poojari_id, seva_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [poojariId, existingSeva.id]
+          );
+        }
+      }
+      return {
+        ...existingSeva,
+        price: parseFloat(existingSeva.price)
+      };
+    }
+
     const res = await db.query(
       `INSERT INTO sevas (name, telugu_name, description, category, price, is_active, is_scheduled, scheduled_date, timing)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -126,7 +155,7 @@ export class SevaService {
                  is_active, is_scheduled, scheduled_date::text as scheduled_date, timing,
                  created_at, updated_at`,
       [
-        data.name.trim(),
+        trimmedName,
         data.telugu_name?.trim() || null,
         data.description?.trim() || null,
         data.category?.trim() || 'Daily Pooja',
