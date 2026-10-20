@@ -70,19 +70,35 @@ export async function buildApp(): Promise<FastifyInstance> {
     system: 'Temple Seva Booking System',
     timestamp: new Date().toISOString()
   }));
+  app.get('/api/health', async () => ({
+    status: 'ok',
+    system: 'Temple Seva Booking System',
+    timestamp: new Date().toISOString()
+  }));
 
-  // Register API modules
+  // Register API modules (both with and without /api prefix for maximum reliability)
   await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(authRoutes, { prefix: '/auth' });
   await app.register(devoteeRoutes, { prefix: '/api/devotees' });
+  await app.register(devoteeRoutes, { prefix: '/devotees' });
   await app.register(sevaRoutes, { prefix: '/api/sevas' });
+  await app.register(sevaRoutes, { prefix: '/sevas' });
   await app.register(bookingRoutes, { prefix: '/api/bookings' });
+  await app.register(bookingRoutes, { prefix: '/bookings' });
   await app.register(ticketRoutes, { prefix: '/api/tickets' });
+  await app.register(ticketRoutes, { prefix: '/tickets' });
   await app.register(poojariRoutes, { prefix: '/api/poojari' });
+  await app.register(poojariRoutes, { prefix: '/poojari' });
   await app.register(reportRoutes, { prefix: '/api/reports' });
+  await app.register(reportRoutes, { prefix: '/reports' });
   await app.register(dailyClosureRoutes, { prefix: '/api/daily-closure' });
+  await app.register(dailyClosureRoutes, { prefix: '/daily-closure' });
   await app.register(retentionRoutes, { prefix: '/api/retention' });
+  await app.register(retentionRoutes, { prefix: '/retention' });
   await app.register(auditRoutes, { prefix: '/api/audit-logs' });
+  await app.register(auditRoutes, { prefix: '/audit-logs' });
   await app.register(settingsRoutes, { prefix: '/api/settings' });
+  await app.register(settingsRoutes, { prefix: '/settings' });
 
   return app;
 }

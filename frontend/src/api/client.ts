@@ -1,4 +1,14 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Normalize API Base URL: automatically handles missing /api, trailing slashes, or custom domains
+function getResolvedBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+  if (!envUrl) {
+    return '/api';
+  }
+  const cleanUrl = envUrl.replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+}
+
+const BASE_URL = getResolvedBaseUrl();
 
 export async function apiRequest<T = any>(
   endpoint: string,
@@ -14,7 +24,10 @@ export async function apiRequest<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const targetUrl = `${BASE_URL}${cleanEndpoint}`;
+
+  const response = await fetch(targetUrl, {
     ...options,
     headers
   });
