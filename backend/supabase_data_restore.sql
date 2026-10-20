@@ -1,6 +1,24 @@
 -- Complete Migration Export from Local SQLite/PGlite to Supabase Cloud
 -- Generated at: 2026-10-20T03:00:18.176Z
 
+-- Safe cleanup of any partial or conflicting test records from previous runs
+DELETE FROM payments WHERE booking_id IN (SELECT id FROM bookings WHERE booking_number IN ('B-01001', 'B-01002', 'B-01003', 'B-01004', 'B-01005', 'B-01006', 'B-01007', 'B-01008', 'B-01009', 'B-01010'));
+DELETE FROM tickets WHERE booking_id IN (SELECT id FROM bookings WHERE booking_number IN ('B-01001', 'B-01002', 'B-01003', 'B-01004', 'B-01005', 'B-01006', 'B-01007', 'B-01008', 'B-01009', 'B-01010')) OR ticket_number LIKE 'B-01001-%' OR ticket_number LIKE 'B-01002-%' OR ticket_number LIKE 'B-01003-%' OR ticket_number LIKE 'B-01004-%' OR ticket_number LIKE 'B-01005-%' OR ticket_number LIKE 'B-01006-%' OR ticket_number LIKE 'B-01007-%' OR ticket_number LIKE 'B-01008-%' OR ticket_number LIKE 'B-01009-%' OR ticket_number LIKE 'B-01010-%';
+DELETE FROM booking_items WHERE booking_id IN (SELECT id FROM bookings WHERE booking_number IN ('B-01001', 'B-01002', 'B-01003', 'B-01004', 'B-01005', 'B-01006', 'B-01007', 'B-01008', 'B-01009', 'B-01010'));
+DELETE FROM bookings WHERE booking_number IN ('B-01001', 'B-01002', 'B-01003', 'B-01004', 'B-01005', 'B-01006', 'B-01007', 'B-01008', 'B-01009', 'B-01010');
+
+DELETE FROM poojari_assignments WHERE seva_id IN (
+  SELECT id FROM sevas 
+  WHERE name IN ('Archana', 'Nitya Abhishekam', 'Sri Lalitha Sahasranama Archana', 'Rudrabhishekam', 'Ganapathi Homam', 'Chandi Homam', 'Pournami Maha Pooja (Today Scheduled)', 'Upcoming Special Kalashabhishekam')
+  AND id NOT IN ('098ba691-8aa4-4921-89b0-7a7122518699', '007a7ece-fffa-45dd-a089-73b12939fcc0', '988f2743-e2c6-48fa-bbeb-d18e8e7f51fb', 'ed582700-d665-48cf-87d8-f38e5a8c49bc', '53f2bca1-882d-4231-801a-ad344d3e9498', 'e951ef0f-e606-4db9-b894-072a97e380a8', '3fdc3632-51e5-44b2-a290-fc509dbf7613', '35eb6d54-d115-42dc-be9b-a8faf000a176')
+  AND id NOT IN (SELECT seva_id FROM booking_items)
+);
+
+DELETE FROM sevas 
+WHERE name IN ('Archana', 'Nitya Abhishekam', 'Sri Lalitha Sahasranama Archana', 'Rudrabhishekam', 'Ganapathi Homam', 'Chandi Homam', 'Pournami Maha Pooja (Today Scheduled)', 'Upcoming Special Kalashabhishekam')
+AND id NOT IN ('098ba691-8aa4-4921-89b0-7a7122518699', '007a7ece-fffa-45dd-a089-73b12939fcc0', '988f2743-e2c6-48fa-bbeb-d18e8e7f51fb', 'ed582700-d665-48cf-87d8-f38e5a8c49bc', '53f2bca1-882d-4231-801a-ad344d3e9498', 'e951ef0f-e606-4db9-b894-072a97e380a8', '3fdc3632-51e5-44b2-a290-fc509dbf7613', '35eb6d54-d115-42dc-be9b-a8faf000a176')
+AND id NOT IN (SELECT seva_id FROM booking_items);
+
 -- Records for staff_users (4)
 INSERT INTO staff_users (id, username, name, role, password_hash, is_active, created_at, updated_at) VALUES ('9bc52944-316b-4a73-a4e5-bed21ced605c', 'admin', 'Sri Sringeri Admin', 'admin', '$2a$10$IBzZgUER.oH0Yjxxy4wFGOO2tkYjp6EMTETAyqCd7qWTduHCW1GAG', true, '2026-10-19T22:25:53.582Z', '2026-10-19T22:25:53.582Z') ON CONFLICT (username) DO NOTHING;
 INSERT INTO staff_users (id, username, name, role, password_hash, is_active, created_at, updated_at) VALUES ('59d7f5d3-1d8f-4a7e-8ab3-51449180fd40', 'staff', 'Counter Staff 1', 'booking_staff', '$2a$10$7cXrALVwYA7hgF3Dd6Tjeu4t5QGo6wwGCXZYFX.upp1DXQvM340pi', true, '2026-10-19T22:25:53.633Z', '2026-10-19T22:25:53.633Z') ON CONFLICT (username) DO NOTHING;
