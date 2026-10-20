@@ -77,9 +77,9 @@ export const BookedSevasPage: React.FC = () => {
     }
 
     if (ritualStatusFilter === 'completed') {
-      list = list.filter(b => (b.completed_ticket_count || 0) > 0 && b.completed_ticket_count === b.ticket_count);
+      list = list.filter(b => Number(b.completed_ticket_count || 0) > 0);
     } else if (ritualStatusFilter === 'pending') {
-      list = list.filter(b => (b.completed_ticket_count || 0) < (b.ticket_count || 1));
+      list = list.filter(b => Number(b.completed_ticket_count || 0) < Number(b.ticket_count || 1));
     }
 
     return list;

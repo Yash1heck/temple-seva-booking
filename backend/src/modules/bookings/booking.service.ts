@@ -454,7 +454,9 @@ export class BookingService {
     const res = await db.query(query, params);
     return res.rows.map(row => ({
       ...row,
-      total_amount: parseFloat(row.total_amount) || 0
+      total_amount: parseFloat(row.total_amount) || 0,
+      ticket_count: parseInt(row.ticket_count, 10) || 0,
+      completed_ticket_count: parseInt(row.completed_ticket_count, 10) || 0
     }));
   }
 

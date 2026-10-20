@@ -16,12 +16,24 @@ export async function sevaRoutes(fastify: FastifyInstance) {
     return { success: true, count: sevas.length, sevas };
   });
 
-  // List Sevas for Booking / Dashboard
-  fastify.get('/', { preHandler: [requireRole(['admin', 'booking_staff', 'poojari'])] }, async (request, reply) => {
-    const user = request.user!;
+  // List Sevas for Booking / Dashboard (Public for active sevas, role-aware for admin/poojari)
+  fastify.get('/', async (request, reply) => {
+    let user = request.user;
+    if (!user) {
+      try {
+        const authHeader = request.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          user = await request.server.jwt.verify<any>(authHeader.substring(7));
+          request.user = user;
+        }
+      } catch {
+        // Unauthenticated devotee request
+      }
+    }
+
     const query = request.query as any;
 
-    if (user.role === 'poojari') {
+    if (user && user.role === 'poojari') {
       // Poojari should use poojari dashboard endpoint, but if calling list, restrict to their assigned sevas
       const targetDate = query.date || getTempleToday();
       return await SevaService.listAll({
@@ -31,10 +43,14 @@ export async function sevaRoutes(fastify: FastifyInstance) {
       });
     }
 
-    // For Admin and Booking Staff:
-    // If query says activeOnly=false and user is admin, show all (including inactive)
-    const onlyActive = query.activeOnly !== 'false' || user.role !== 'admin';
+    // For Devotees and Booking Staff: show active sevas. Only Admin with activeOnly=false sees inactive
+    const onlyActive = query.activeOnly !== 'false' || user?.role !== 'admin';
     return await SevaService.listAll({ onlyActive });
+  });
+
+  // Dedicated Public Sevas Endpoint for Devotee Self-Service Portal
+  fastify.get('/public', async () => {
+    return await SevaService.listAll({ onlyActive: true });
   });
 
   // Get Single Seva Details

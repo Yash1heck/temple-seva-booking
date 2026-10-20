@@ -218,8 +218,8 @@ export async function seedInitialData(db: IDatabaseClient): Promise<void> {
     if (sevaId) {
       for (const p of poojariList) {
         await db.query(
-          `INSERT INTO poojari_assignments (seva_id, poojari_id, is_primary)
-           SELECT $1, $2, true
+          `INSERT INTO poojari_assignments (seva_id, poojari_id)
+           SELECT $1, $2
            WHERE NOT EXISTS (
              SELECT 1 FROM poojari_assignments WHERE seva_id = $1 AND poojari_id = $2
            )`,

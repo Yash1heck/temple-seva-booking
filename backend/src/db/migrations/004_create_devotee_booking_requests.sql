@@ -21,3 +21,4 @@ ALTER TABLE IF EXISTS devotee_booking_requests ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_devotee_requests_mobile ON devotee_booking_requests(mobile);
 CREATE INDEX IF NOT EXISTS idx_devotee_requests_status ON devotee_booking_requests(status);
 CREATE INDEX IF NOT EXISTS idx_devotee_requests_created_at ON devotee_booking_requests(created_at);
+

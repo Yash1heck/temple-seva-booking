@@ -37,7 +37,10 @@ export const DevoteeBookingPage: React.FC = () => {
   const loadSevas = async () => {
     setIsLoadingSevas(true);
     try {
-      const list = await apiRequest<Seva[]>('/sevas?onlyActive=true');
+      let list = await apiRequest<Seva[]>('/sevas/public').catch(() => null);
+      if (!list || list.length === 0) {
+        list = await apiRequest<Seva[]>('/sevas?onlyActive=true').catch(() => null);
+      }
       setSevas(list || []);
     } catch (err) {
       console.error('Failed to load sevas for devotees', err);
@@ -593,3 +596,4 @@ export const DevoteeBookingPage: React.FC = () => {
     </div>
   );
 };
+

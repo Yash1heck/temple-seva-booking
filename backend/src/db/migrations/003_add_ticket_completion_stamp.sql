@@ -10,3 +10,4 @@ ALTER TABLE tickets ADD CONSTRAINT tickets_status_check CHECK (status IN ('issue
 
 CREATE INDEX IF NOT EXISTS idx_tickets_completed_at ON tickets(completed_at);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+
