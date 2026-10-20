@@ -9,6 +9,7 @@ import {
   Sparkles, Calendar, ArrowDown, ArrowRight, Clock, ShieldCheck, Heart
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getTempleToday, getTempleTomorrow, formatTempleDate } from '../utils/date.js';
 
 export const DevoteeBookingPage: React.FC = () => {
   const [sevas, setSevas] = useState<Seva[]>([]);
@@ -18,6 +19,7 @@ export const DevoteeBookingPage: React.FC = () => {
 
   // Cart & Devotee Form State
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [poojaDate, setPoojaDate] = useState<string>(getTempleToday());
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [gothra, setGothra] = useState('');
   const [familyDetails, setFamilyDetails] = useState('');
@@ -138,7 +140,7 @@ export const DevoteeBookingPage: React.FC = () => {
           seva_name: i.seva.telugu_name || i.seva.name,
           seva_price: i.seva.price,
           quantity: i.quantity,
-          scheduled_date: i.seva.scheduled_date || null
+          scheduled_date: i.seva.is_scheduled ? (i.seva.scheduled_date || poojaDate) : poojaDate
         }))
       };
 
@@ -197,6 +199,12 @@ export const DevoteeBookingPage: React.FC = () => {
             <div className="flex justify-between border-b border-gray-200 pb-1">
               <span className="text-gray-500">సంకల్ప కర్త:</span>
               <strong className="text-gray-800">{submittedRequest.devotee_name}</strong>
+            </div>
+            <div className="flex justify-between border-b border-gray-200 pb-1">
+              <span className="text-gray-500">పూజా నిర్వహణ తేదీ:</span>
+              <strong className="text-[#7A1C23] font-bold">
+                📅 {formatTempleDate(submittedRequest.items[0]?.scheduled_date || poojaDate)}
+              </strong>
             </div>
             <div className="flex justify-between border-b border-gray-200 pb-1">
               <span className="text-gray-500">గోత్రము:</span>
@@ -487,6 +495,51 @@ export const DevoteeBookingPage: React.FC = () => {
 
               {/* Devotee Input Fields Form */}
               <form onSubmit={handleSubmitRequest} className="space-y-3 pt-2 border-t border-[#E8DCCE]">
+                {/* Dedicated Devotee Pooja Date Selector */}
+                <div className="bg-[#FAF5EC] p-3 rounded-xl border border-[#E8DCCE] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#7A1C23] flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#C86A1B]" />
+                      <span>📅 పూజా నిర్వహణ తేదీ (Pooja Date) *</span>
+                    </label>
+                    <span className="text-[10px] text-gray-600 font-medium font-serif">
+                      {formatTempleDate(poojaDate)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPoojaDate(getTempleToday())}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        poojaDate === getTempleToday()
+                          ? 'bg-[#7A1C23] text-white shadow-xs'
+                          : 'bg-white text-gray-700 border border-[#E8DCCE] hover:bg-[#F3ECE0]'
+                      }`}
+                    >
+                      నేడు
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoojaDate(getTempleTomorrow())}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        poojaDate === getTempleTomorrow()
+                          ? 'bg-[#7A1C23] text-white shadow-xs'
+                          : 'bg-white text-gray-700 border border-[#E8DCCE] hover:bg-[#F3ECE0]'
+                      }`}
+                    >
+                      రేపు
+                    </button>
+                    <input
+                      type="date"
+                      min={getTempleToday()}
+                      value={poojaDate}
+                      onChange={(e) => setPoojaDate(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 bg-white border border-[#E8DCCE] rounded-lg text-xs font-bold text-[#2D2520] focus:outline-none focus:ring-2 focus:ring-[#C86A1B]"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
                     సంకల్ప కర్త పేరు (Ritual Beneficiary) *

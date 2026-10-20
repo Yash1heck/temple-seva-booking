@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { apiRequest } from '../api/client.js';
-import { Sparkles, CheckCircle2, ArrowLeft, RotateCcw, List, Layers, Users, Calendar, Printer } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowLeft, ArrowRight, RotateCcw, List, Layers, Users, Calendar, Printer } from 'lucide-react';
 import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 import { playTempleBell } from '../utils/templeAudio.js';
@@ -54,6 +54,10 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [flyDirection, setFlyDirection] = useState<'right' | 'left' | null>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Sacred Sanctum Consecration Stamp Animation State
+  const [isStamping, setIsStamping] = useState(false);
+  const [stampingTicket, setStampingTicket] = useState<string | null>(null);
 
   // Fast memory state synced with database ticket status
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>(() => {
@@ -194,6 +198,38 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     if (currentCardIndex > 0) {
       setCurrentCardIndex(prev => prev - 1);
     }
+  };
+
+  const handleNextCard = () => {
+    if (currentCardIndex < activeCards.length - 1) {
+      setCurrentCardIndex(prev => prev + 1);
+    }
+  };
+
+  // Sacred Sanctum Consecration Stamp Action (ఆలయ ముద్ర - Seal & Complete)
+  const handleStampConsecrate = async () => {
+    const currentCard = activeCards[currentCardIndex];
+    if (!currentCard || isStamping) return;
+
+    setIsStamping(true);
+    setStampingTicket(currentCard.ticket_number);
+    playTempleBell(0.4);
+
+    // Give 450ms for stamp impact animation and sacred bell chime
+    setTimeout(async () => {
+      await markTicketCompleted(currentCard.ticket_number);
+
+      // Brief delay so priest observes the circular completed red seal before sliding to next card
+      setTimeout(() => {
+        setIsStamping(false);
+        setStampingTicket(null);
+        if (cardFilter !== 'pending') {
+          if (currentCardIndex < activeCards.length - 1) {
+            setCurrentCardIndex(prev => prev + 1);
+          }
+        }
+      }, 400);
+    }, 450);
   };
 
   // Drag Handlers
@@ -591,6 +627,27 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Senior-Friendly Micro Progress Counter */}
+              <div className="bg-[#FAF5EC] px-3.5 py-2 rounded-xl border border-[#E8DCCE] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-[#7A1C23]">
+                  <span>📜</span>
+                  <span>సంకల్ప పత్రం:</span>
+                  <span className="font-mono text-amber-950 font-black">
+                    {currentCardIndex + 1} / {activeCards.length}
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-medium hidden sm:inline">
+                    (ఒకేసారి ఒక పత్రం)
+                  </span>
+                </div>
+
+                <div className="w-24 sm:w-32 bg-gray-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-[#C86A1B] to-[#7A1C23] h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${Math.round(((currentCardIndex + 1) / activeCards.length) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
               {/* Card Container */}
               <div className="relative h-[310px] w-full flex items-center justify-center">
                 {/* Visual Stack Cards Behind (Depth 3) */}
@@ -642,7 +699,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                   </div>
                 )}
 
-                {/* Top Active Card with Silky Drag Physics */}
+                {/* Top Active Card with Silky Drag Physics & Sanctum Stamp Seal */}
                 {currentCard && (
                   <div
                     style={{ ...cardTransformStyle, touchAction: 'none' }}
@@ -653,15 +710,37 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                     onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
                     onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
                     onTouchEnd={handleEnd}
-                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-xl p-4 flex flex-col justify-between z-20 cursor-grab active:cursor-grabbing select-none"
+                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-xl p-4 flex flex-col justify-between z-20 cursor-grab active:cursor-grabbing select-none overflow-hidden"
                   >
-                    {/* Visual Stamp during drag: Any direction marks as Complete! */}
+                    {/* Visual Stamp during drag */}
                     {isSwipeIntent && (
                       <div
                         style={{ opacity: intentOpacity }}
                         className={`absolute top-4 ${dragOffset.x > 0 ? 'right-4 rotate-12' : 'left-4 -rotate-12'} z-30 px-3 py-1 bg-emerald-600 text-white font-bold rounded-xl text-xs shadow-md border border-emerald-400`}
                       >
                         ✓ సంకల్పం పూర్తయింది
+                      </div>
+                    )}
+
+                    {/* Sacred Consecration Circular Seal on Card */}
+                    {(isCurrentCompleted || stampingTicket === currentCard.ticket_number) && (
+                      <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 pointer-events-none select-none z-30 ${stampingTicket === currentCard.ticket_number ? 'animate-stamp-recoil' : '-rotate-12'}`}>
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-dashed border-red-600/90 p-1 flex items-center justify-center shadow-lg bg-red-50/95">
+                          <div className="w-full h-full rounded-full border border-red-600 flex flex-col items-center justify-center text-center p-1 text-red-700">
+                            <span className="text-[7.5px] font-bold text-red-800 tracking-tight leading-none">
+                              ★ శ్రీ శృంగేరి శారదా పీఠం ★
+                            </span>
+                            <span className="text-xs font-serif font-bold text-red-800 leading-none my-0.5">
+                              ॐ
+                            </span>
+                            <span className="text-[9.5px] font-black uppercase tracking-wider leading-tight text-red-700">
+                              నిర్వహించబడింది
+                            </span>
+                            <span className="text-[7.5px] font-extrabold tracking-widest text-red-600 leading-none mt-0.5">
+                              COMPLETED
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -684,7 +763,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                         <div className="text-[10px] text-gray-500 font-serif">
                           సంకల్ప కర్త నామం
                         </div>
-                        <div className="text-xl font-bold text-[#7A1C23] font-serif tracking-wide line-clamp-1">
+                        <div className="text-xl sm:text-2xl font-bold text-[#7A1C23] font-serif tracking-wide line-clamp-1">
                           {toTeluguText(currentCard.ritual_beneficiary_name)}
                         </div>
 
@@ -705,10 +784,10 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                       </div>
                     </div>
 
-                    {/* Card Bottom */}
+                    {/* Card Bottom Status */}
                     <div className="pt-2 border-t border-dashed border-[#E8DCCE] flex items-center justify-between">
                       <div className="text-[10px] text-gray-500">
-                        👉 ఏ వైపుకైనా స్వైప్ చేసి పూర్తి చేయండి
+                        👉 ఏ వైపుకైనా స్వైప్ లేదా క్రింది ముద్ర వేయండి
                       </div>
 
                       {isCurrentCompleted ? (
@@ -725,29 +804,58 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                 )}
               </div>
 
-              {/* Action Buttons: Clean & Direct */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
+              {/* COOL ACTION 1: Majestic Consecrated Brass Seal Stamp Press Button */}
+              <div className="pt-1 space-y-2">
                 <button
                   type="button"
-                  onClick={handlePrevCard}
-                  disabled={currentCardIndex === 0}
-                  className="py-2.5 px-2 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 transition-colors flex items-center justify-center gap-1 active:scale-95"
+                  disabled={isStamping || isCurrentCompleted}
+                  onClick={handleStampConsecrate}
+                  className={`w-full relative group overflow-hidden py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 border ${
+                    isCurrentCompleted
+                      ? 'bg-emerald-700 text-white border-emerald-500 cursor-default'
+                      : 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white border-amber-300/70 shadow-amber-900/20'
+                  }`}
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>మునుపటిది</span>
+                  {/* Subtle Golden Sheen Shimmer */}
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+
+                  <span className="text-xl">🪔</span>
+                  <div className="text-center leading-tight">
+                    <div className="font-serif font-black tracking-wide text-white drop-shadow-xs text-sm sm:text-base">
+                      {isCurrentCompleted ? 'సంకల్పం నిర్వహించబడింది ✓' : 'సంకల్ప ముద్ర వేయండి (Seal & Consecrate)'}
+                    </div>
+                    <div className="text-[10px] text-amber-100 font-medium">
+                      {isCurrentCompleted ? 'ఆలయ ముద్రతో పూర్తయింది' : 'స్పర్శతో ఆలయ ముద్ర & ఘంటానాదం 🔔'}
+                    </div>
+                  </div>
+                  <span className="text-xl">💮</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleExecuteSwipeComplete('right')}
-                  className="col-span-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                  <span>సంకల్పం పూర్తయింది ✓</span>
-                </button>
+                {/* Deterministic Slip Navigation (Prev / Next) for Senior Archakas */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrevCard}
+                    disabled={currentCardIndex === 0}
+                    className="flex-1 py-2 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>మునుపటి పత్రం</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextCard}
+                    disabled={currentCardIndex >= activeCards.length - 1}
+                    className="flex-1 py-2 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                  >
+                    <span>తదుపరి పత్రం</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Undo Button */}
+              {/* Undo Option */}
               {currentCard && isCurrentCompleted && (
                 <div className="text-center pt-0.5">
                   <button

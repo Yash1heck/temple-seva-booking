@@ -142,17 +142,19 @@ export class PoojariService {
     }
 
     const targetTicket = existingRes.rows[0];
+    const bookingId = targetTicket.booking_id;
     const bookingItemId = targetTicket.booking_item_id;
 
-    // Mark the ticket and all sibling tickets for this devotee's seva item completed
+    // Mark ALL tickets belonging to this devotee's booking as completed,
+    // ensuring every ticket in multi-ticket bookings receives the circular completed seal upon printing!
     const res = await db.query(
       `UPDATE tickets
        SET status = 'completed',
            completed_at = COALESCE(completed_at, NOW()),
            completed_by = COALESCE(completed_by, $2)
-       WHERE booking_item_id = $1 OR ticket_number = $3
+       WHERE booking_id = $1 OR booking_item_id = $3 OR ticket_number = $4
        RETURNING id, ticket_number, booking_id, status, completed_at, completed_by`,
-      [bookingItemId, poojariId, cleanNumber]
+      [bookingId, poojariId, bookingItemId, cleanNumber]
     );
 
     // Audit log
