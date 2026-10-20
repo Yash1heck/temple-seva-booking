@@ -23,7 +23,14 @@ class PgPoolClient implements IDatabaseClient {
   private pool: pg.Pool;
 
   constructor(connectionString: string) {
-    this.pool = new pg.Pool({ connectionString });
+    const isRemote = connectionString.includes('supabase') || 
+                     connectionString.includes('pooler') || 
+                     connectionString.includes('sslmode') ||
+                     process.env.NODE_ENV === 'production';
+    this.pool = new pg.Pool({
+      connectionString,
+      ssl: isRemote ? { rejectUnauthorized: false } : undefined,
+    });
   }
 
   async query<T = any>(sql: string, params?: any[]): Promise<QueryResult<T>> {
