@@ -5,8 +5,8 @@ import { Lock, User as UserIcon, AlertCircle, Sparkles } from 'lucide-react';
 import { playTempleBell } from '../utils/templeAudio.js';
 
 export const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState('staff');
-  const [password, setPassword] = useState('Staff@Sringeri123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,12 +34,6 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const setPreset = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setError(null);
   };
 
   return (
@@ -152,50 +146,8 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Quick Demo Access Roles */}
-        <div className="mt-5 pt-3.5 border-t border-[#E8DCCE]/70">
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center mb-2">
-            త్వరిత ప్రవేశం (Quick Role Selection):
-          </p>
-          <div className="grid grid-cols-3 gap-1.5 text-center">
-            <button
-              type="button"
-              onClick={() => setPreset('staff', 'Staff@Sringeri123')}
-              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
-                username === 'staff'
-                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
-                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
-              }`}
-            >
-              సిబ్బంది (Staff)
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('poojari', 'Poojari@Sringeri123')}
-              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
-                username === 'poojari'
-                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
-                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
-              }`}
-            >
-              అర్చకులు (Poojari)
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreset('admin', 'Admin@Sringeri123')}
-              className={`p-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-2xs ${
-                username === 'admin'
-                  ? 'bg-[#7A1C23] text-white border-[#7A1C23]'
-                  : 'bg-white/80 text-gray-700 border-[#E8DCCE] hover:bg-white'
-              }`}
-            >
-              నిర్వాహకులు (Admin)
-            </button>
-          </div>
-        </div>
-
         {/* Sacred Traditional Benediction */}
-        <div className="mt-4 pt-2 border-t border-[#E8DCCE]/40 text-center text-[10px] text-[#7A1C23] font-serif font-bold">
+        <div className="mt-5 pt-3.5 border-t border-[#E8DCCE]/70 text-center text-xs text-[#7A1C23] font-serif font-bold">
           సర్వే జనాః సుఖినో భవంతు • సమస్త సన్మంగళాని భవంతు
         </div>
       </div>

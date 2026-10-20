@@ -81,6 +81,12 @@ export const AdminDashboardPage: React.FC = () => {
     password: ''
   });
 
+  // Password Reset Modal
+  const [resettingUser, setResettingUser] = useState<User | null>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [passwordStatusMsg, setPasswordStatusMsg] = useState<string | null>(null);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+
   // Reports
   const [reportStart, setReportStart] = useState(getTempleToday());
   const [reportEnd, setReportEnd] = useState(getTempleToday());
@@ -447,6 +453,26 @@ export const AdminDashboardPage: React.FC = () => {
       loadUsers();
     } catch (err: any) {
       alert(err.message || 'Failed to update user status');
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resettingUser || !newPasswordValue.trim()) return;
+    setIsSavingPassword(true);
+    setPasswordStatusMsg(null);
+    try {
+      await apiRequest(`/auth/users/${resettingUser.id}/password`, {
+        method: 'PATCH',
+        body: JSON.stringify({ password: newPasswordValue.trim() })
+      });
+      alert(`పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది (${resettingUser.username})`);
+      setResettingUser(null);
+      setNewPasswordValue('');
+    } catch (err: any) {
+      setPasswordStatusMsg(err.message || 'పాస్‌వర్డ్ మార్పు విఫలమైంది');
+    } finally {
+      setIsSavingPassword(false);
     }
   };
 
@@ -1485,10 +1511,20 @@ export const AdminDashboardPage: React.FC = () => {
                         {(u as any).is_active !== false ? 'Active' : 'Disabled'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-right space-x-2">
+                      <button
+                        onClick={() => {
+                          setResettingUser(u);
+                          setNewPasswordValue('');
+                          setPasswordStatusMsg(null);
+                        }}
+                        className="text-xs font-semibold text-[#7A1C23] hover:underline bg-[#FAF5EC] px-2 py-1 rounded-lg border border-[#E8DCCE]"
+                      >
+                        పాస్‌వర్డ్ మార్చు (Reset)
+                      </button>
                       <button
                         onClick={() => handleToggleUserStatus(u.id, (u as any).is_active !== false)}
-                        className="text-xs font-semibold text-gray-600 hover:text-red-700"
+                        className="text-xs font-semibold text-gray-600 hover:text-red-700 px-2 py-1"
                       >
                         {(u as any).is_active !== false ? 'Disable' : 'Enable'}
                       </button>
@@ -1498,6 +1534,70 @@ export const AdminDashboardPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Password Reset Modal */}
+          {resettingUser && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+              <div className="bg-white rounded-2xl shadow-xl border border-[#E8DCCE] max-w-sm w-full p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#FAF5EC] pb-3">
+                  <h3 className="text-sm font-bold text-[#7A1C23] font-serif">
+                    🔐 పాస్‌వర్డ్ మార్పు (Change Password)
+                  </h3>
+                  <button
+                    onClick={() => setResettingUser(null)}
+                    className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><span className="font-bold text-[#2D2520]">వినియోగదారు:</span> {resettingUser.name}</p>
+                  <p><span className="font-bold text-[#2D2520]">యూజర్‌నేమ్:</span> <span className="font-mono">{resettingUser.username}</span></p>
+                </div>
+
+                {passwordStatusMsg && (
+                  <div className="p-2.5 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200">
+                    {passwordStatusMsg}
+                  </div>
+                )}
+
+                <form onSubmit={handleResetPassword} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#7A1C23] mb-1 font-serif">
+                      నూతన రహస్య సంకేతం (New Password)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={newPasswordValue}
+                      onChange={(e) => setNewPasswordValue(e.target.value)}
+                      placeholder="కనీసం 6 అక్షరాలు"
+                      className="w-full px-3 py-2 text-xs bg-[#FAF5EC]/70 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setResettingUser(null)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    >
+                      రద్దు (Cancel)
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingPassword}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-[#7A1C23] hover:bg-[#912028] transition-colors"
+                    >
+                      {isSavingPassword ? 'సేవ్ అవుతోంది...' : 'సేవ్ చేయండి (Save)'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

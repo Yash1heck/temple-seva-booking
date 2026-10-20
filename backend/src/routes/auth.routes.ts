@@ -101,5 +101,46 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: err.message });
     }
   });
+
+  // Admin resets or updates password for any staff/poojari/admin user
+  fastify.patch('/users/:id/password', { preHandler: [requireRole(['admin'])] }, async (request, reply) => {
+    const params = request.params as { id: string };
+    const body = request.body as { password?: string };
+
+    if (!body.password || body.password.trim().length < 6) {
+      return reply.status(400).send({ error: 'పాస్‌వర్డ్ కనీసం 6 అక్షరాలు ఉండాలి (Password must be at least 6 characters)' });
+    }
+
+    try {
+      await AuthService.updateUserPassword(params.id, body.password.trim());
+      return { success: true, message: 'పాస్‌వర్డ్ విజయవంతంగా నవీకరించబడింది' };
+    } catch (err: any) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
+  // Authenticated user updates their own password
+  fastify.post('/change-password', { preHandler: [requireRole(['admin', 'booking_staff', 'poojari'])] }, async (request, reply) => {
+    const body = request.body as { currentPassword?: string; newPassword?: string };
+    if (!body.currentPassword || !body.newPassword) {
+      return reply.status(400).send({ error: 'ప్రస్తుత పాస్‌వర్డ్ మరియు నూతన పాస్‌వర్డ్ అవసరం' });
+    }
+    if (body.newPassword.trim().length < 6) {
+      return reply.status(400).send({ error: 'నూతన పాస్‌వర్డ్ కనీసం 6 అక్షరాలు ఉండాలి' });
+    }
+
+    const user = await AuthService.findByUsername(request.user!.username);
+    if (!user) {
+      return reply.status(404).send({ error: 'వినియోగదారు కనుగొనబడలేదు' });
+    }
+
+    const isValid = await AuthService.verifyPassword(body.currentPassword, user.password_hash);
+    if (!isValid) {
+      return reply.status(400).send({ error: 'ప్రస్తుత పాస్‌వర్డ్ సరైనది కాదు' });
+    }
+
+    await AuthService.updateUserPassword(user.id, body.newPassword.trim());
+    return { success: true, message: 'పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది' };
+  });
 }
 

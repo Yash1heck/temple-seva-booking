@@ -3,12 +3,15 @@ dotenv.config();
 
 import { buildApp } from './app.js';
 import { getDb, runMigrations, closeDb } from './db/index.js';
+import { seedInitialData } from './db/seed.js';
 
 async function start() {
   try {
     console.log('Initializing database...');
     const db = await getDb();
     await runMigrations(db);
+    console.log('Seeding / verifying initial temple catalog and staff...');
+    await seedInitialData(db);
 
     const app = await buildApp();
     const port = parseInt(process.env.PORT || '4000', 10);

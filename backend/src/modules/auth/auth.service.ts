@@ -86,6 +86,20 @@ export class AuthService {
     return res.rows[0];
   }
 
+  static async updateUserPassword(id: string, newPlainPassword: string, client?: IDatabaseClient): Promise<void> {
+    const db = client || await getDb();
+    const hash = await bcrypt.hash(newPlainPassword, 10);
+    const res = await db.query(
+      `UPDATE staff_users
+       SET password_hash = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [hash, id]
+    );
+    if (res.rowCount === 0) {
+      throw new Error('User not found');
+    }
+  }
+
   static async verifyPassword(plain: string, hash: string): Promise<boolean> {
     return bcrypt.compare(plain, hash);
   }
