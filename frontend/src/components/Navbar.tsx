@@ -7,7 +7,7 @@ export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  if (!user) return null;
+  if (!user || location.pathname === '/login') return null;
 
   const isActive = (path: string) => location.pathname === path;
 

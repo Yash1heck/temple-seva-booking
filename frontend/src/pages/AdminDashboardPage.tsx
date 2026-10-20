@@ -1068,6 +1068,11 @@ export const AdminDashboardPage: React.FC = () => {
                           : prev.telugu_name
                       }));
                     }}
+                    onBlur={() => {
+                      if (!newSeva.telugu_name.trim() && newSeva.name.trim()) {
+                        setNewSeva(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }));
+                      }
+                    }}
                     className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
                     placeholder="e.g. Sahasra Deepalankarana Seva"
                   />
@@ -1079,10 +1084,11 @@ export const AdminDashboardPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setNewSeva(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }))}
-                      className="text-[11px] text-[#7A1C23] hover:underline font-bold"
+                      className="flex items-center gap-1 text-[11px] text-[#7A1C23] bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md font-bold transition-colors cursor-pointer"
                       title="ఆంగ్ల పేరు ఆధారంగా తెలుగులోకి మార్చండి"
                     >
-                      తెలుగులోకి మార్చు (Auto-Translate)
+                      <Sparkles className="w-3 h-3 text-[#C86A1B]" />
+                      <span>తెలుగులోకి మార్చు (Auto-Translate)</span>
                     </button>
                   </div>
                   <input
@@ -1403,6 +1409,11 @@ export const AdminDashboardPage: React.FC = () => {
                             : prev.telugu_name
                         }));
                       }}
+                      onBlur={() => {
+                        if (!editingSevaForm.telugu_name.trim() && editingSevaForm.name.trim()) {
+                          setEditingSevaForm(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }));
+                        }
+                      }}
                       className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
                     />
                   </div>
@@ -1413,10 +1424,11 @@ export const AdminDashboardPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setEditingSevaForm(prev => ({ ...prev, telugu_name: toTeluguSevaName(prev.name) }))}
-                        className="text-[11px] text-[#7A1C23] hover:underline font-bold"
+                        className="flex items-center gap-1 text-[11px] text-[#7A1C23] bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md font-bold transition-colors cursor-pointer"
                         title="ఆంగ్ల పేరు ఆధారంగా తెలుగులోకి మార్చండి"
                       >
-                        తెలుగులోకి మార్చు (Auto-Translate)
+                        <Sparkles className="w-3 h-3 text-[#C86A1B]" />
+                        <span>తెలుగులోకి మార్చు (Auto-Translate)</span>
                       </button>
                     </div>
                     <input
