@@ -152,9 +152,10 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   // SWIPE COMPLETION HANDLER: Any direction (left or right) = COMPLETE (No skip!)
   const handleExecuteSwipeComplete = (direction: 'left' | 'right') => {
     const currentCard = activeCards[currentCardIndex];
-    if (!currentCard) return;
+    if (!currentCard || flyDirection) return;
 
     setFlyDirection(direction);
+    playTempleBell(0.4);
 
     setTimeout(() => {
       markTicketCompleted(currentCard.ticket_number);
@@ -168,8 +169,8 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
         }
       }
       // If viewing pending, the completed card is removed from activeCards automatically,
-      // so the next card drops right into currentCardIndex without skipping!
-    }, 220);
+      // so the next card drops right into currentCardIndex smoothly without skipping!
+    }, 360);
   };
 
   const handlePrevCard = () => {
@@ -188,7 +189,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging || flyDirection) return;
     const dx = clientX - dragStartRef.current.x;
-    const dy = (clientY - dragStartRef.current.y) * 0.2;
+    const dy = (clientY - dragStartRef.current.y) * 0.25;
     setDragOffset({ x: dx, y: dy });
   };
 
@@ -196,9 +197,9 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     if (!isDragging || flyDirection) return;
     setIsDragging(false);
 
-    if (dragOffset.x > 60) {
+    if (dragOffset.x > 50) {
       handleExecuteSwipeComplete('right');
-    } else if (dragOffset.x < -60) {
+    } else if (dragOffset.x < -50) {
       handleExecuteSwipeComplete('left');
     } else {
       setDragOffset({ x: 0, y: 0 });
@@ -373,33 +374,35 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const currentCard = activeCards[currentCardIndex];
   const isCurrentCompleted = currentCard ? !!completedMap[currentCard.ticket_number] : false;
 
-  const rotateDeg = dragOffset.x * 0.08;
+  const rotateDeg = dragOffset.x * 0.09;
   const isSwipeIntent = Math.abs(dragOffset.x) > 20;
-  const intentOpacity = Math.min(1, Math.abs(dragOffset.x) / 60);
+  const intentOpacity = Math.min(1, Math.abs(dragOffset.x) / 50);
 
   let cardTransformStyle: React.CSSProperties = {};
   if (flyDirection === 'right') {
     cardTransformStyle = {
-      transform: 'translateX(130%) rotate(20deg)',
+      transform: 'translate3d(145%, 15px, 0) rotate(22deg)',
       opacity: 0,
-      transition: 'transform 0.22s ease-out, opacity 0.22s ease-out'
+      transition: 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease-out',
+      pointerEvents: 'none'
     };
   } else if (flyDirection === 'left') {
     cardTransformStyle = {
-      transform: 'translateX(-130%) rotate(-20deg)',
+      transform: 'translate3d(-145%, 15px, 0) rotate(-22deg)',
       opacity: 0,
-      transition: 'transform 0.22s ease-out, opacity 0.22s ease-out'
+      transition: 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease-out',
+      pointerEvents: 'none'
     };
   } else if (isDragging) {
     cardTransformStyle = {
-      transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${rotateDeg}deg)`,
+      transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${rotateDeg}deg)`,
       transition: 'none',
       cursor: 'grabbing'
     };
   } else {
     cardTransformStyle = {
-      transform: 'translate(0px, 0px) rotate(0deg)',
-      transition: 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+      transform: 'translate3d(0px, 0px, 0) rotate(0deg)',
+      transition: 'transform 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
     };
   }
 
@@ -557,18 +560,59 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
             <div className="space-y-3">
               {/* Card Container */}
               <div className="relative h-[310px] w-full flex items-center justify-center">
-                {/* Visual Stack Cards Behind */}
+                {/* Visual Stack Cards Behind (Depth 3) */}
                 {activeCards[currentCardIndex + 2] && (
-                  <div className="absolute w-[90%] h-[270px] bg-amber-50/70 rounded-2xl border border-amber-200/50 shadow-2xs transform translate-y-3 scale-90 z-0 pointer-events-none" />
-                )}
-                {activeCards[currentCardIndex + 1] && (
-                  <div className="absolute w-[95%] h-[280px] bg-white rounded-2xl border border-[#E8DCCE] shadow-xs transform translate-y-1.5 scale-95 z-10 pointer-events-none" />
+                  <div className="absolute w-[88%] h-[270px] bg-[#FAF5EC]/70 rounded-2xl border border-[#E8DCCE] shadow-2xs transform translate-y-3.5 scale-90 z-0 pointer-events-none transition-all duration-300" />
                 )}
 
-                {/* Top Active Card with Drag Physics */}
+                {/* Visual Stack Card 2 (Next Devotee Slip elevates dynamically as you swipe) */}
+                {activeCards[currentCardIndex + 1] && (
+                  <div
+                    style={{
+                      transform: isDragging || flyDirection
+                        ? `translate3d(0, ${Math.max(0, 8 - (Math.abs(dragOffset.x) / 80) * 8)}px, 0) scale(${Math.min(1, 0.95 + (Math.abs(dragOffset.x) / 80) * 0.05)})`
+                        : 'translate3d(0, 8px, 0) scale(0.95)',
+                      transition: isDragging ? 'none' : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)'
+                    }}
+                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-md p-4 flex flex-col justify-between z-10 pointer-events-none select-none overflow-hidden"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-[#E8DCCE]/70 pb-2">
+                        <div className="flex items-center gap-1.5 text-gray-500">
+                          <span>🕉️</span>
+                          <span className="text-xs font-bold font-serif">సంకల్ప పత్రం (తదుపరిది)</span>
+                        </div>
+                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] text-gray-600 rounded">
+                          {activeCards[currentCardIndex + 1].ticket_number}
+                        </span>
+                      </div>
+                      <div className="mt-4 space-y-1.5 text-center">
+                        <div className="text-[10px] text-gray-400 font-serif">సంకల్ప కర్త నామం</div>
+                        <div className="text-lg font-bold text-[#7A1C23]/90 font-serif tracking-wide truncate">
+                          {toTeluguText(activeCards[currentCardIndex + 1].ritual_beneficiary_name)}
+                        </div>
+                        <div className="inline-block mt-1 px-3 py-0.5 bg-amber-50 border border-amber-200 rounded-full">
+                          <span className="text-xs font-bold text-amber-900/80 font-serif">
+                            గోత్రము: {formatTeluguGothram(activeCards[currentCardIndex + 1].gothra)}
+                          </span>
+                        </div>
+                        {activeCards[currentCardIndex + 1].family_details && (
+                          <div className="pt-2 text-xs text-gray-500 line-clamp-1">
+                            కుటుంబం: {toTeluguText(activeCards[currentCardIndex + 1].family_details)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-dashed border-[#E8DCCE]/70 text-center text-[10px] text-gray-400">
+                      తదుపరి సంకల్ప పత్రం
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Active Card with Silky Drag Physics */}
                 {currentCard && (
                   <div
-                    style={cardTransformStyle}
+                    style={{ ...cardTransformStyle, touchAction: 'none' }}
                     onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
                     onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
                     onMouseUp={handleEnd}
@@ -576,7 +620,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                     onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
                     onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
                     onTouchEnd={handleEnd}
-                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-lg p-4 flex flex-col justify-between z-20 cursor-grab active:cursor-grabbing select-none"
+                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-xl p-4 flex flex-col justify-between z-20 cursor-grab active:cursor-grabbing select-none"
                   >
                     {/* Visual Stamp during drag: Any direction marks as Complete! */}
                     {isSwipeIntent && (
