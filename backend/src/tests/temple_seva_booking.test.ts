@@ -750,4 +750,33 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
     expect(approveBody.status).toBe('approved');
     expect(approveBody.approved_booking_id).toBe(createdBooking.booking.id);
   });
+
+  it('Feature 33: Batch completion marks all pending tickets for a date and seva as completed', async () => {
+    const today = getTempleToday();
+    const createdBooking = await BookingService.createBooking({
+      ritual_beneficiary_name: 'బ్యాచ్ టెస్ట్ కర్త',
+      gothra: 'కౌశికస',
+      items: [{ seva_id: archanaSeva.id, quantity: 2 }],
+      payment: { method: 'cash', status: 'confirmed' },
+      created_by_id: staffUser.id
+    });
+
+    const batchRes = await app.inject({
+      method: 'POST',
+      url: '/poojari/batch-complete',
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: {
+        target_date: today,
+        seva_id: archanaSeva.id
+      }
+    });
+
+    expect(batchRes.statusCode).toBe(200);
+    const batchBody = JSON.parse(batchRes.body);
+    expect(batchBody.updated_count).toBeGreaterThanOrEqual(2);
+
+    // Verify booking tickets are now completed
+    const details = await BookingService.getBookingDetails(createdBooking.booking.id);
+    expect(details.tickets.every(t => t.status === 'completed')).toBe(true);
+  });
 });

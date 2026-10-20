@@ -23,6 +23,29 @@ export async function poojariRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Batch Mark Tickets as Completed (Whole Seva batch or End of Day closure)
+  fastify.post('/batch-complete', { preHandler: [requireRole(['poojari', 'admin'])] }, async (request, reply) => {
+    const schema = z.object({
+      target_date: z.string().min(1, 'Target date is required'),
+      seva_id: z.string().uuid().optional().nullable()
+    });
+    const parsed = schema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    try {
+      const result = await PoojariService.batchMarkTicketsCompleted(
+        parsed.data.target_date,
+        parsed.data.seva_id || undefined,
+        request.user!.id
+      );
+      return result;
+    } catch (err: any) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
   // Poojari Dashboard (STRICTLY READ-ONLY for financial data)
   fastify.get('/dashboard', { preHandler: [requireRole(['poojari', 'admin'])] }, async (request, reply) => {
     const user = request.user!;

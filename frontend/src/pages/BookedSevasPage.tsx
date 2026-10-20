@@ -6,7 +6,7 @@ import { RitualScheduleView } from '../components/RitualScheduleView.js';
 import { getTempleToday, formatTempleDateTime, formatTempleDate } from '../utils/date.js';
 import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
-import { Search, Calendar, RefreshCw, Printer, BookOpen, Layers, Sparkles, ListFilter, CheckCircle, Clock } from 'lucide-react';
+import { Search, Calendar, RefreshCw, Printer, BookOpen, Layers, Sparkles, ListFilter, CheckCircle, Clock, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 
@@ -20,6 +20,28 @@ export const BookedSevasPage: React.FC = () => {
   const [filterMode, setFilterMode] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
   const [ritualStatusFilter, setRitualStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [isBatchCompletingAll, setIsBatchCompletingAll] = useState(false);
+
+  const handleAdminBatchCompleteForDate = async () => {
+    if (ritualCounts.pending === 0) return;
+    const confirmMsg = `శ్రీ శృంగేరి శారదా పీఠం సన్నిధానం:\nతేదీ (${selectedDate}) కు సంబంధించిన మొత్తం ${ritualCounts.pending} పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయాలనుకుంటున్నారా?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsBatchCompletingAll(true);
+    try {
+      await apiRequest('/poojari/batch-complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          target_date: selectedDate
+        })
+      });
+      await loadBookings();
+    } catch (err: any) {
+      alert(err.message || 'పూజలు నమోదు చేయడం విఫలమైంది');
+    } finally {
+      setIsBatchCompletingAll(false);
+    }
+  };
 
   // Ticket Modal State
   const [printModalOpen, setPrintModalOpen] = useState(false);
@@ -298,6 +320,18 @@ export const BookedSevasPage: React.FC = () => {
                 >
                   ★ పూర్తయినవి ({ritualCounts.completed})
                 </button>
+
+                {isAdmin && ritualCounts.pending > 0 && (
+                  <button
+                    type="button"
+                    disabled={isBatchCompletingAll}
+                    onClick={handleAdminBatchCompleteForDate}
+                    className="shrink-0 whitespace-nowrap ml-auto px-2.5 py-1 bg-gradient-to-r from-[#7A1C23] to-[#5C1217] hover:brightness-110 active:scale-95 text-white rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1 transition-all border border-amber-300/40"
+                  >
+                    <Zap className="w-3 h-3 text-amber-300" />
+                    <span>{isBatchCompletingAll ? 'పూర్తవుతున్నాయి...' : `నేటి అన్ని పెండింగ్ పూజలను పూర్తి చేయండి (${ritualCounts.pending})`}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

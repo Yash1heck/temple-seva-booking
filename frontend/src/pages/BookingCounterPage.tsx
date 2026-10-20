@@ -99,6 +99,11 @@ export const BookingCounterPage: React.FC = () => {
   };
 
   const handleApproveDevoteeRequest = (req: DevoteeBookingRequest) => {
+    const devoteeDate = req.items.find(i => !!i.scheduled_date)?.scheduled_date || null;
+    if (devoteeDate) {
+      setRitualDate(devoteeDate);
+    }
+
     const newCart: CartItem[] = [];
     req.items.forEach(item => {
       const matchedSeva = sevas.find(s => s.id === item.seva_id) || {
@@ -108,13 +113,18 @@ export const BookingCounterPage: React.FC = () => {
         category: 'Daily Pooja',
         price: item.seva_price,
         is_active: true,
-        is_scheduled: !!item.scheduled_date,
-        scheduled_date: item.scheduled_date || null,
+        is_scheduled: !!(item.scheduled_date || devoteeDate),
+        scheduled_date: item.scheduled_date || devoteeDate || null,
         timing: null,
         description: null
       };
+      const sevaWithDate = {
+        ...matchedSeva,
+        scheduled_date: item.scheduled_date || devoteeDate || matchedSeva.scheduled_date || null,
+        is_scheduled: !!(item.scheduled_date || devoteeDate || matchedSeva.is_scheduled)
+      };
       newCart.push({
-        seva: matchedSeva,
+        seva: sevaWithDate,
         quantity: item.quantity || 1
       });
     });
@@ -241,7 +251,7 @@ export const BookingCounterPage: React.FC = () => {
           quantity: c.quantity,
           ritual_beneficiary_name: beneficiaryName.trim(),
           gothra: gothra.trim(),
-          scheduled_date: c.seva.is_scheduled ? c.seva.scheduled_date : (ritualDate || null)
+          scheduled_date: c.seva.scheduled_date || (c.seva.is_scheduled ? c.seva.scheduled_date : (ritualDate || null))
         })),
         payment: {
           method: paymentMethod,
@@ -925,6 +935,14 @@ export const BookingCounterPage: React.FC = () => {
                         {req.family_details && (
                           <div className="col-span-2 text-[11px] text-gray-600">
                             <span className="text-gray-400">కుటుంబం:</span> {req.family_details}
+                          </div>
+                        )}
+                        {req.items[0]?.scheduled_date && (
+                          <div className="col-span-2 text-xs bg-amber-50/90 text-amber-900 border border-amber-200 px-2 py-1 rounded-md font-bold flex items-center justify-between">
+                            <span>📅 కోరిన పూజా నిర్వహణ తేదీ:</span>
+                            <span className="font-mono text-xs font-black text-[#7A1C23]">
+                              {req.items[0].scheduled_date}
+                            </span>
                           </div>
                         )}
                       </div>

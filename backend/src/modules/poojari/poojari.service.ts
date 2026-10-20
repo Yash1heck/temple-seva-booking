@@ -180,5 +180,71 @@ export class PoojariService {
       completed_by_name: uRes.rows[0]?.name || null
     };
   }
+
+  /**
+   * Batch marks all pending tickets for a specific ritual date (and optional seva) as completed.
+   * Useful for high-volume temple seva batches and administrative end-of-day closure.
+   */
+  static async batchMarkTicketsCompleted(
+    targetDate: string,
+    sevaId?: string,
+    actorId: string = 'system',
+    client?: IDatabaseClient
+  ): Promise<{ updated_count: number; tickets: string[] }> {
+    const db = client || await getDb();
+
+    let query = `
+      UPDATE tickets
+      SET status = 'completed',
+          completed_at = COALESCE(completed_at, NOW()),
+          completed_by = COALESCE(completed_by, $1)
+      WHERE id IN (
+        SELECT t.id
+        FROM tickets t
+        JOIN booking_items bi ON t.booking_item_id = bi.id
+        JOIN bookings b ON t.booking_id = b.id
+        WHERE t.status = 'issued'
+          AND b.booking_status != 'cancelled'
+          AND (
+            (bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot = $2::date)
+            OR (bi.scheduled_date_snapshot IS NULL AND (t.created_at + INTERVAL '5 hours 30 minutes')::date = $2::date)
+          )
+    `;
+    const params: any[] = [actorId, targetDate];
+
+    if (sevaId) {
+      params.push(sevaId);
+      query += ` AND bi.seva_id = $${params.length}`;
+    }
+
+    query += `
+      )
+      RETURNING id, ticket_number, booking_id
+    `;
+
+    const res = await db.query(query, params);
+
+    if (res.rows.length > 0) {
+      await db.query(
+        `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, details)
+         VALUES ($1, 'BATCH_POOJA_COMPLETED', 'tickets', $2, $3)`,
+        [
+          actorId,
+          res.rows[0].id,
+          JSON.stringify({
+            count: res.rows.length,
+            target_date: targetDate,
+            seva_id: sevaId || 'all',
+            ticket_numbers: res.rows.map(r => r.ticket_number)
+          })
+        ]
+      );
+    }
+
+    return {
+      updated_count: res.rows.length,
+      tickets: res.rows.map(r => r.ticket_number)
+    };
+  }
 }
 

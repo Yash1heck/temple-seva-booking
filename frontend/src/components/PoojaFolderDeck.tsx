@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiRequest } from '../api/client.js';
-import { Sparkles, CheckCircle2, ArrowLeft, ArrowRight, RotateCcw, List, Layers, Users, Calendar, Printer } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowLeft, ArrowRight, RotateCcw, List, Layers, Users, Calendar, Printer, Zap } from 'lucide-react';
 import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 import { playTempleBell } from '../utils/templeAudio.js';
@@ -49,15 +49,10 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const [currentCardIndex, setCurrentCardIndex] = useState<number>(0);
   const [folderViewMode, setFolderViewMode] = useState<'cards' | 'list'>('cards');
 
-  // Swipe Physics State
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [flyDirection, setFlyDirection] = useState<'right' | 'left' | null>(null);
-  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
   // Sacred Sanctum Consecration Stamp Animation State
   const [isStamping, setIsStamping] = useState(false);
   const [stampingTicket, setStampingTicket] = useState<string | null>(null);
+  const [isBatchCompleting, setIsBatchCompleting] = useState(false);
 
   // Fast memory state synced with database ticket status
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>(() => {
@@ -91,8 +86,6 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     // Reset folder view when date switches
     setActiveFolderId(null);
     setCurrentCardIndex(0);
-    setDragOffset({ x: 0, y: 0 });
-    setFlyDirection(null);
   }, [selectedDate]);
 
   const toggleTicketCompletion = (ticketNumber: string) => {
@@ -170,30 +163,6 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     }
   }, [activeCards.length, currentCardIndex]);
 
-  // SWIPE COMPLETION HANDLER: Any direction (left or right) = COMPLETE (No skip!)
-  const handleExecuteSwipeComplete = (direction: 'left' | 'right') => {
-    const currentCard = activeCards[currentCardIndex];
-    if (!currentCard || flyDirection) return;
-
-    setFlyDirection(direction);
-    playTempleBell(0.4);
-
-    setTimeout(() => {
-      markTicketCompleted(currentCard.ticket_number);
-      setFlyDirection(null);
-      setDragOffset({ x: 0, y: 0 });
-
-      // If viewing completed or all, explicitly advance index
-      if (cardFilter !== 'pending') {
-        if (currentCardIndex < activeCards.length - 1) {
-          setCurrentCardIndex(prev => prev + 1);
-        }
-      }
-      // If viewing pending, the completed card is removed from activeCards automatically,
-      // so the next card drops right into currentCardIndex smoothly without skipping!
-    }, 360);
-  };
-
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
       setCurrentCardIndex(prev => prev - 1);
@@ -219,7 +188,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     setTimeout(async () => {
       await markTicketCompleted(currentCard.ticket_number);
 
-      // Brief delay so priest observes the circular completed red seal before sliding to next card
+      // Brief delay so priest observes the circular completed red seal before advancing
       setTimeout(() => {
         setIsStamping(false);
         setStampingTicket(null);
@@ -232,30 +201,41 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     }, 450);
   };
 
-  // Drag Handlers
-  const handleStart = (clientX: number, clientY: number) => {
-    if (flyDirection) return;
-    setIsDragging(true);
-    dragStartRef.current = { x: clientX, y: clientY };
-  };
+  // Batch Complete All Pending Tickets in Current Seva Folder
+  const handleBatchCompleteFolder = async () => {
+    if (!activeFolder) return;
+    const pendingList = activeFolder.registrations.filter(t => !completedMap[t.ticket_number]);
+    if (pendingList.length === 0) return;
 
-  const handleMove = (clientX: number, clientY: number) => {
-    if (!isDragging || flyDirection) return;
-    const dx = clientX - dragStartRef.current.x;
-    const dy = (clientY - dragStartRef.current.y) * 0.25;
-    setDragOffset({ x: dx, y: dy });
-  };
+    const confirmMsg = `శ్రీ శృంగేరి శారదా పీఠం సన్నిధానం:\n"${activeFolder.telugu_name || activeFolder.seva_name}" సేవలోని మొత్తం ${pendingList.length} పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయాలనుకుంటున్నారా?`;
+    if (!window.confirm(confirmMsg)) return;
 
-  const handleEnd = () => {
-    if (!isDragging || flyDirection) return;
-    setIsDragging(false);
+    setIsBatchCompleting(true);
+    playTempleBell(0.5);
 
-    if (dragOffset.x > 50) {
-      handleExecuteSwipeComplete('right');
-    } else if (dragOffset.x < -50) {
-      handleExecuteSwipeComplete('left');
-    } else {
-      setDragOffset({ x: 0, y: 0 });
+    try {
+      await apiRequest('/poojari/batch-complete', {
+        method: 'POST',
+        body: JSON.stringify({
+          target_date: selectedDate,
+          seva_id: activeFolder.seva_id
+        })
+      });
+
+      // Update local completedMap
+      setCompletedMap(prev => {
+        const next = { ...prev };
+        activeFolder.registrations.forEach(t => {
+          next[t.ticket_number] = true;
+        });
+        return next;
+      });
+
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'పూజల నమోదు విఫలమైంది');
+    } finally {
+      setIsBatchCompleting(false);
     }
   };
 
@@ -428,43 +408,11 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   }
 
   // -------------------------------------------------------------
-  // VIEW 2: INSIDE OPENED FOLDER (TINDER SWIPE SLIP DECK)
-  // Any swipe (left or right) completes the slip with zero skipping!
+  // VIEW 2: INSIDE OPENED FOLDER (STABLE SANCTUM SLIP)
+  // Dedicated Physical Slip with Integrated Consecration Stamp (Zero Swipe Ambiguity)
   // -------------------------------------------------------------
   const currentCard = activeCards[currentCardIndex];
   const isCurrentCompleted = currentCard ? !!completedMap[currentCard.ticket_number] : false;
-
-  const rotateDeg = dragOffset.x * 0.09;
-  const isSwipeIntent = Math.abs(dragOffset.x) > 20;
-  const intentOpacity = Math.min(1, Math.abs(dragOffset.x) / 50);
-
-  let cardTransformStyle: React.CSSProperties = {};
-  if (flyDirection === 'right') {
-    cardTransformStyle = {
-      transform: 'translate3d(145%, 15px, 0) rotate(22deg)',
-      opacity: 0,
-      transition: 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease-out',
-      pointerEvents: 'none'
-    };
-  } else if (flyDirection === 'left') {
-    cardTransformStyle = {
-      transform: 'translate3d(-145%, 15px, 0) rotate(-22deg)',
-      opacity: 0,
-      transition: 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease-out',
-      pointerEvents: 'none'
-    };
-  } else if (isDragging) {
-    cardTransformStyle = {
-      transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${rotateDeg}deg)`,
-      transition: 'none',
-      cursor: 'grabbing'
-    };
-  } else {
-    cardTransformStyle = {
-      transform: 'translate3d(0px, 0px, 0) rotate(0deg)',
-      transition: 'transform 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-    };
-  }
 
   return (
     <div className="space-y-3 max-w-md mx-auto select-none">
@@ -502,6 +450,23 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           <span>{folderViewMode === 'cards' ? 'జాబితా' : 'కార్డులు'}</span>
         </button>
       </div>
+
+      {/* 1-Click Seva Batch Complete Action (Available when pending tickets exist) */}
+      {activeFolder.registrations.filter(t => !completedMap[t.ticket_number]).length > 0 && (
+        <button
+          type="button"
+          disabled={isBatchCompleting}
+          onClick={handleBatchCompleteFolder}
+          className="w-full py-2.5 px-3 bg-gradient-to-r from-[#7A1C23] to-[#5C1217] hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 border border-amber-300/40"
+        >
+          <Zap className="w-4 h-4 text-amber-300" />
+          <span>
+            {isBatchCompleting
+              ? 'పూజలు పూర్తవుతున్నాయి...'
+              : `ఈ సేవలోని అన్ని పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయండి (${activeFolder.registrations.filter(t => !completedMap[t.ticket_number]).length})`}
+          </span>
+        </button>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center justify-between gap-1 px-1">
@@ -602,7 +567,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
           )}
         </div>
       ) : (
-        /* CARD SLIP DECK */
+        /* SINGLE SACRED SANCTUM SLIP VIEW (ZERO SWIPE AMBIGUITY) */
         <div>
           {activeCards.length === 0 ? (
             <div className="bg-white rounded-2xl border border-[#E8DCCE] p-8 text-center space-y-2.5 shadow-xs">
@@ -648,225 +613,142 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                 </div>
               </div>
 
-              {/* Card Container */}
-              <div className="relative h-[310px] w-full flex items-center justify-center">
-                {/* Visual Stack Cards Behind (Depth 3) */}
-                {activeCards[currentCardIndex + 2] && (
-                  <div className="absolute w-[88%] h-[270px] bg-[#FAF5EC]/70 rounded-2xl border border-[#E8DCCE] shadow-2xs transform translate-y-3.5 scale-90 z-0 pointer-events-none transition-all duration-300" />
-                )}
-
-                {/* Visual Stack Card 2 (Next Devotee Slip elevates dynamically as you swipe) */}
-                {activeCards[currentCardIndex + 1] && (
-                  <div
-                    style={{
-                      transform: isDragging || flyDirection
-                        ? `translate3d(0, ${Math.max(0, 8 - (Math.abs(dragOffset.x) / 80) * 8)}px, 0) scale(${Math.min(1, 0.95 + (Math.abs(dragOffset.x) / 80) * 0.05)})`
-                        : 'translate3d(0, 8px, 0) scale(0.95)',
-                      transition: isDragging ? 'none' : 'transform 0.36s cubic-bezier(0.22, 1, 0.36, 1)'
-                    }}
-                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-md p-4 flex flex-col justify-between z-10 pointer-events-none select-none overflow-hidden"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between border-b border-[#E8DCCE]/70 pb-2">
-                        <div className="flex items-center gap-1.5 text-gray-500">
-                          <span>🕉️</span>
-                          <span className="text-xs font-bold font-serif">సంకల్ప పత్రం (తదుపరిది)</span>
-                        </div>
-                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] text-gray-600 rounded">
-                          {activeCards[currentCardIndex + 1].ticket_number}
-                        </span>
-                      </div>
-                      <div className="mt-4 space-y-1.5 text-center">
-                        <div className="text-[10px] text-gray-400 font-serif">సంకల్ప కర్త నామం</div>
-                        <div className="text-lg font-bold text-[#7A1C23]/90 font-serif tracking-wide truncate">
-                          {toTeluguText(activeCards[currentCardIndex + 1].ritual_beneficiary_name)}
-                        </div>
-                        <div className="inline-block mt-1 px-3 py-0.5 bg-amber-50 border border-amber-200 rounded-full">
-                          <span className="text-xs font-bold text-amber-900/80 font-serif">
-                            గోత్రము: {formatTeluguGothram(activeCards[currentCardIndex + 1].gothra)}
+              {/* Consecrated Devotee Slip Card with Integrated Consecration Seal */}
+              {currentCard && (
+                <div className="relative bg-[#FDFBF7] rounded-2xl border-2 border-[#E8DCCE] shadow-lg p-4 space-y-3.5 overflow-hidden">
+                  {/* Sacred Consecration Circular Seal Watermark on Card */}
+                  {(isCurrentCompleted || stampingTicket === currentCard.ticket_number) && (
+                    <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 pointer-events-none select-none z-30 ${stampingTicket === currentCard.ticket_number ? 'animate-stamp-recoil' : '-rotate-12'}`}>
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-dashed border-red-600/90 p-1 flex items-center justify-center shadow-lg bg-red-50/95">
+                        <div className="w-full h-full rounded-full border border-red-600 flex flex-col items-center justify-center text-center p-1 text-red-700">
+                          <span className="text-[7.5px] font-bold text-red-800 tracking-tight leading-none">
+                            ★ శ్రీ శృంగేరి శారదా పీఠం ★
+                          </span>
+                          <span className="text-xs font-serif font-bold text-red-800 leading-none my-0.5">
+                            ॐ
+                          </span>
+                          <span className="text-[9.5px] font-black uppercase tracking-wider leading-tight text-red-700">
+                            నిర్వహించబడింది
+                          </span>
+                          <span className="text-[7.5px] font-extrabold tracking-widest text-red-600 leading-none mt-0.5">
+                            COMPLETED
                           </span>
                         </div>
-                        {activeCards[currentCardIndex + 1].family_details && (
-                          <div className="pt-2 text-xs text-gray-500 line-clamp-1">
-                            కుటుంబం: {toTeluguText(activeCards[currentCardIndex + 1].family_details)}
-                          </div>
-                        )}
                       </div>
                     </div>
-                    <div className="pt-2 border-t border-dashed border-[#E8DCCE]/70 text-center text-[10px] text-gray-400">
-                      తదుపరి సంకల్ప పత్రం
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Top Active Card with Silky Drag Physics & Sanctum Stamp Seal */}
-                {currentCard && (
-                  <div
-                    style={{ ...cardTransformStyle, touchAction: 'none' }}
-                    onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-                    onMouseMove={(e) => handleMove(e.clientX, e.clientY)}
-                    onMouseUp={handleEnd}
-                    onMouseLeave={handleEnd}
-                    onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY)}
-                    onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
-                    onTouchEnd={handleEnd}
-                    className="absolute w-full h-[290px] bg-white rounded-2xl border-2 border-[#E8DCCE] shadow-xl p-4 flex flex-col justify-between z-20 cursor-grab active:cursor-grabbing select-none overflow-hidden"
-                  >
-                    {/* Visual Stamp during drag */}
-                    {isSwipeIntent && (
-                      <div
-                        style={{ opacity: intentOpacity }}
-                        className={`absolute top-4 ${dragOffset.x > 0 ? 'right-4 rotate-12' : 'left-4 -rotate-12'} z-30 px-3 py-1 bg-emerald-600 text-white font-bold rounded-xl text-xs shadow-md border border-emerald-400`}
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-2">
+                    <div className="flex items-center gap-1.5 text-[#7A1C23]">
+                      <span>🕉️</span>
+                      <span className="text-xs font-bold font-serif">
+                        {templeTitle}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded">
+                      {currentCard.ticket_number}
+                    </span>
+                  </div>
+
+                  {/* Sacred Chanting Name, Gothram & Family Details */}
+                  <div className="py-1 space-y-2 text-center">
+                    <div className="text-[10px] text-gray-500 font-serif">
+                      సంకల్ప కర్త నామం (Ritual Beneficiary)
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-[#7A1C23] font-serif tracking-wide">
+                      {toTeluguText(currentCard.ritual_beneficiary_name)}
+                    </div>
+
+                    <div className="inline-block px-3.5 py-1 bg-amber-100/70 border border-amber-300 rounded-full">
+                      <span className="text-xs sm:text-sm font-bold text-amber-950 font-serif">
+                        గోత్రము: {formatTeluguGothram(currentCard.gothra)}
+                      </span>
+                    </div>
+
+                    {currentCard.family_details && (
+                      <div className="pt-1 text-xs text-gray-700">
+                        <span className="text-gray-500 font-serif">కుటుంబ సభ్యులు: </span>
+                        <span className="font-medium">
+                          {toTeluguText(currentCard.family_details)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* INTEGRATED SEAL AREA: Embedded directly inside the card footer */}
+                  <div className="pt-2.5 border-t border-dashed border-[#E8DCCE]">
+                    {!isCurrentCompleted && stampingTicket !== currentCard.ticket_number ? (
+                      <button
+                        type="button"
+                        disabled={isStamping}
+                        onClick={handleStampConsecrate}
+                        className="w-full relative group overflow-hidden py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 border bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white border-amber-300/80 shadow-amber-900/15"
                       >
-                        ✓ సంకల్పం పూర్తయింది
-                      </div>
-                    )}
-
-                    {/* Sacred Consecration Circular Seal on Card */}
-                    {(isCurrentCompleted || stampingTicket === currentCard.ticket_number) && (
-                      <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 pointer-events-none select-none z-30 ${stampingTicket === currentCard.ticket_number ? 'animate-stamp-recoil' : '-rotate-12'}`}>
-                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-dashed border-red-600/90 p-1 flex items-center justify-center shadow-lg bg-red-50/95">
-                          <div className="w-full h-full rounded-full border border-red-600 flex flex-col items-center justify-center text-center p-1 text-red-700">
-                            <span className="text-[7.5px] font-bold text-red-800 tracking-tight leading-none">
-                              ★ శ్రీ శృంగేరి శారదా పీఠం ★
-                            </span>
-                            <span className="text-xs font-serif font-bold text-red-800 leading-none my-0.5">
-                              ॐ
-                            </span>
-                            <span className="text-[9.5px] font-black uppercase tracking-wider leading-tight text-red-700">
-                              నిర్వహించబడింది
-                            </span>
-                            <span className="text-[7.5px] font-extrabold tracking-widest text-red-600 leading-none mt-0.5">
-                              COMPLETED
-                            </span>
+                        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                        <span className="text-lg">🪔</span>
+                        <div className="text-center leading-tight">
+                          <div className="font-serif font-black tracking-wide text-white drop-shadow-xs">
+                            సంకల్ప ముద్ర వేయండి (Seal & Consecrate)
+                          </div>
+                          <div className="text-[9.5px] text-amber-100 font-medium">
+                            స్పర్శతో ఆలయ ముద్ర & ఘంటానాదం 🔔
                           </div>
                         </div>
+                        <span className="text-lg">💮</span>
+                      </button>
+                    ) : (
+                      <div className="bg-red-50/90 border border-red-200 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-10 h-10 rounded-full border-2 border-dashed border-red-600 bg-red-100/90 flex flex-col items-center justify-center text-center p-0.5 ${stampingTicket === currentCard.ticket_number ? 'animate-stamp-recoil' : ''}`}>
+                            <span className="text-[6px] font-bold text-red-800 leading-none">★ శారదా ★</span>
+                            <span className="text-[8px] font-serif font-bold text-red-800 leading-none my-0.5">ॐ</span>
+                            <span className="text-[6px] font-black uppercase text-red-700 leading-none">DONE</span>
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-red-800 font-serif flex items-center gap-1">
+                              <span>✓</span> సంకల్పం నిర్వహించబడింది
+                            </div>
+                            <div className="text-[10px] text-gray-500">
+                              ఆలయ ముద్రతో పూర్తయింది
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleTicketCompletion(currentCard.ticket_number)}
+                          className="text-[11px] text-gray-500 hover:text-red-700 underline font-medium px-2 py-1"
+                        >
+                          Undo
+                        </button>
                       </div>
                     )}
-
-                    {/* Card Top */}
-                    <div>
-                      <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-2">
-                        <div className="flex items-center gap-1.5 text-[#7A1C23]">
-                          <span>🕉️</span>
-                          <span className="text-xs font-bold font-serif">
-                            సంకల్ప పత్రం (Chanting Slip)
-                          </span>
-                        </div>
-                        <span className="font-mono text-[11px] font-bold px-2 py-0.5 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded">
-                          {currentCard.ticket_number}
-                        </span>
-                      </div>
-
-                      {/* Sacred Chanting Name & Gothram */}
-                      <div className="mt-4 space-y-1.5 text-center">
-                        <div className="text-[10px] text-gray-500 font-serif">
-                          సంకల్ప కర్త నామం
-                        </div>
-                        <div className="text-xl sm:text-2xl font-bold text-[#7A1C23] font-serif tracking-wide line-clamp-1">
-                          {toTeluguText(currentCard.ritual_beneficiary_name)}
-                        </div>
-
-                        <div className="inline-block mt-1 px-3 py-0.5 bg-amber-100/70 border border-amber-300 rounded-full">
-                          <span className="text-xs font-bold text-amber-950 font-serif">
-                            గోత్రము: {formatTeluguGothram(currentCard.gothra)}
-                          </span>
-                        </div>
-
-                        {currentCard.family_details && (
-                          <div className="pt-2 text-xs text-gray-700 line-clamp-2">
-                            <span className="text-gray-500 font-serif">కుటుంబం: </span>
-                            <span className="font-medium">
-                              {toTeluguText(currentCard.family_details)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Card Bottom Status */}
-                    <div className="pt-2 border-t border-dashed border-[#E8DCCE] flex items-center justify-between">
-                      <div className="text-[10px] text-gray-500">
-                        👉 ఏ వైపుకైనా స్వైప్ లేదా క్రింది ముద్ర వేయండి
-                      </div>
-
-                      {isCurrentCompleted ? (
-                        <span className="px-2 py-0.5 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-full text-[11px] font-bold">
-                          ✓ పూర్తయింది
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-800 rounded-full text-[11px] font-bold">
-                          ⏳ పూజించవలెను
-                        </span>
-                      )}
-                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* COOL ACTION 1: Majestic Consecrated Brass Seal Stamp Press Button */}
-              <div className="pt-1 space-y-2">
-                <button
-                  type="button"
-                  disabled={isStamping || isCurrentCompleted}
-                  onClick={handleStampConsecrate}
-                  className={`w-full relative group overflow-hidden py-3 px-4 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 border ${
-                    isCurrentCompleted
-                      ? 'bg-emerald-700 text-white border-emerald-500 cursor-default'
-                      : 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white border-amber-300/70 shadow-amber-900/20'
-                  }`}
-                >
-                  {/* Subtle Golden Sheen Shimmer */}
-                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
-
-                  <span className="text-xl">🪔</span>
-                  <div className="text-center leading-tight">
-                    <div className="font-serif font-black tracking-wide text-white drop-shadow-xs text-sm sm:text-base">
-                      {isCurrentCompleted ? 'సంకల్పం నిర్వహించబడింది ✓' : 'సంకల్ప ముద్ర వేయండి (Seal & Consecrate)'}
-                    </div>
-                    <div className="text-[10px] text-amber-100 font-medium">
-                      {isCurrentCompleted ? 'ఆలయ ముద్రతో పూర్తయింది' : 'స్పర్శతో ఆలయ ముద్ర & ఘంటానాదం 🔔'}
-                    </div>
-                  </div>
-                  <span className="text-xl">💮</span>
-                </button>
-
-                {/* Deterministic Slip Navigation (Prev / Next) for Senior Archakas */}
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePrevCard}
-                    disabled={currentCardIndex === 0}
-                    className="flex-1 py-2 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>మునుపటి పత్రం</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleNextCard}
-                    disabled={currentCardIndex >= activeCards.length - 1}
-                    className="flex-1 py-2 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                  >
-                    <span>తదుపరి పత్రం</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Undo Option */}
-              {currentCard && isCurrentCompleted && (
-                <div className="text-center pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleTicketCompletion(currentCard.ticket_number)}
-                    className="text-[11px] text-gray-500 hover:text-red-700 underline font-medium"
-                  >
-                    ఈ సంకల్పాన్ని అసంపూర్తిగా మార్చండి (Undo)
-                  </button>
                 </div>
               )}
+
+              {/* Clean Deterministic Navigation Controls (Prev / Next) */}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handlePrevCard}
+                  disabled={currentCardIndex === 0}
+                  className="flex-1 py-2.5 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>మునుపటి పత్రం</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleNextCard}
+                  disabled={currentCardIndex >= activeCards.length - 1}
+                  className="flex-1 py-2.5 px-3 bg-white border border-[#E8DCCE] text-gray-700 rounded-xl text-xs font-bold disabled:opacity-40 hover:bg-[#FAF5EC] active:scale-95 flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <span>తదుపరి పత్రం</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           )}
         </div>
