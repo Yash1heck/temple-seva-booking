@@ -55,143 +55,168 @@ export async function seedInitialData(db: IDatabaseClient): Promise<void> {
   const poojariRes = await db.query(`SELECT id FROM staff_users WHERE username = 'poojari' LIMIT 1`);
   const poojariId = poojariRes.rows[0]?.id;
 
-  // 4. Seed Sevas (if empty)
-  const sevasCountRes = await db.query(`SELECT COUNT(*) as count FROM sevas`);
-  const sevasCount = parseInt(sevasCountRes.rows[0]?.count || '0', 10);
+  // 4. Seed Sevas (Idempotent per-seva check)
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-  if (sevasCount === 0) {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const sevas = [
+    {
+      name: 'Archana',
+      telugu_name: 'అర్చన',
+      description: 'Ashtothara Shatanama Archana with Kumkuma and flowers',
+      category: 'Daily Pooja',
+      price: 50.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '06:00 AM - 12:00 PM, 05:00 PM - 08:30 PM'
+    },
+    {
+      name: 'Nitya Abhishekam',
+      telugu_name: 'నిత్య అభిషేకం',
+      description: 'Morning sacred bath of the deity with Panchamrita and Vedic Chanting',
+      category: 'Daily Pooja',
+      price: 200.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '07:30 AM - 08:30 AM'
+    },
+    {
+      name: 'Sri Lalitha Sahasranama Archana',
+      telugu_name: 'శ్రీ లలితా సహస్రనామ అర్చన',
+      description: 'Chanting of 1000 holy names of Sri Sharadamba with saffron vermilion',
+      category: 'Special Pooja',
+      price: 150.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '10:00 AM - 11:00 AM'
+    },
+    {
+      name: 'Rudrabhishekam',
+      telugu_name: 'రుద్రాభిషేకం',
+      description: 'Sri Rudra Prashna Abhishekam to Lord Chandramouleeswara with Bilva leaves',
+      category: 'Daily Pooja',
+      price: 500.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '08:30 AM - 09:30 AM'
+    },
+    {
+      name: 'Ganapathi Homam',
+      telugu_name: 'గణపతి హోమం',
+      description: 'Sacred fire ritual to remove obstacles and invoke auspicious blessings',
+      category: 'Daily Pooja',
+      price: 1000.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '07:00 AM - 08:30 AM'
+    },
+    {
+      name: 'Chandi Homam (Pratyaksha)',
+      telugu_name: 'చండీ హోమం (ప్రత్యక్షం)',
+      description: 'Grand sacred fire ritual invokes the benevolent warrior aspect of Jagadamba',
+      category: 'Special Homam',
+      price: 2500.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '09:00 AM - 01:00 PM'
+    },
+    {
+      name: 'Navagraha Shanti Homam',
+      telugu_name: 'నవగ్రహ శాంతి హోమం',
+      description: 'Planetary appeasement ritual for health, prosperity and removal of obstacles',
+      category: 'Special Homam',
+      price: 1500.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '08:00 AM - 11:00 AM'
+    },
+    {
+      name: 'Suvasini Pooja & Kumkumarchana',
+      telugu_name: 'సువాసిని పూజ & కుంకుమార్చన',
+      description: 'Offering traditional tambulam, saree and kumkuma pooja to married women as divine forms',
+      category: 'Special Pooja',
+      price: 350.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '11:00 AM - 12:00 PM'
+    },
+    {
+      name: 'Pournami Maha Pooja (Today Scheduled)',
+      telugu_name: 'పౌర్ణమి మహా పూజ (నేడు)',
+      description: 'Special full moon evening Deeparadhana and Suvasini Pooja',
+      category: 'Special Pooja',
+      price: 750.00,
+      is_active: true,
+      is_scheduled: true,
+      scheduled_date: today,
+      timing: '06:00 PM - 08:00 PM'
+    },
+    {
+      name: 'Lakshmi Narayana Sahasranama Pooja',
+      telugu_name: 'లక్ష్మీ నారాయణ సహస్రనామ పూజ',
+      description: 'Pooja on auspicious Ekadashi or Fridays with Tulasi and lotus petals',
+      category: 'Scheduled Special',
+      price: 500.00,
+      is_active: true,
+      is_scheduled: true,
+      scheduled_date: tomorrow,
+      timing: '05:30 PM - 07:00 PM'
+    },
+    {
+      name: 'Maha Ganapathi Homam',
+      telugu_name: 'మహా గణపతి హోమం',
+      description: 'Early morning oblations for removing all doshas and starting new endeavors',
+      category: 'Daily Pooja',
+      price: 750.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: '05:30 AM - 07:00 AM'
+    },
+    {
+      name: 'Karpura Harathi & Prasada Seva',
+      telugu_name: 'కర్పూర హారతి & ప్రసాద సేవ',
+      description: 'Evening deeparadhana with special Laddu and Panchamrita prasadam packet',
+      category: 'Daily Pooja',
+      price: 30.00,
+      is_active: true,
+      is_scheduled: false,
+      scheduled_date: null,
+      timing: 'All Day'
+    }
+  ];
 
-    const sevas = [
-      {
-        name: 'Archana',
-        telugu_name: 'అర్చన',
-        description: 'Ashtothara Shatanama Archana with Kumkuma and flowers',
-        category: 'Daily Pooja',
-        price: 50.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '06:00 AM - 12:00 PM, 05:00 PM - 08:30 PM'
-      },
-      {
-        name: 'Nitya Abhishekam',
-        telugu_name: 'నిత్య అభిషేకం',
-        description: 'Morning sacred bath of the deity with Panchamrita and Vedic Chanting',
-        category: 'Daily Pooja',
-        price: 200.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '07:30 AM - 08:30 AM'
-      },
-      {
-        name: 'Sri Lalitha Sahasranama Archana',
-        telugu_name: 'శ్రీ లలితా సహస్రనామ అర్చన',
-        description: 'Chanting of 1000 holy names of Sri Sharadamba with saffron vermilion',
-        category: 'Special Pooja',
-        price: 150.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '10:00 AM - 11:00 AM'
-      },
-      {
-        name: 'Rudrabhishekam',
-        telugu_name: 'రుద్రాభిషేకం',
-        description: 'Sri Rudra Prashna Abhishekam to Lord Chandramouleeswara with Bilva leaves',
-        category: 'Daily Pooja',
-        price: 500.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '08:30 AM - 09:30 AM'
-      },
-      {
-        name: 'Chandi Homam (Pratyaksha)',
-        telugu_name: 'చండీ హోమం (ప్రత్యక్షం)',
-        description: 'Grand sacred fire ritual invokes the benevolent warrior aspect of Jagadamba',
-        category: 'Special Homam',
-        price: 2500.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '09:00 AM - 01:00 PM'
-      },
-      {
-        name: 'Navagraha Shanti Homam',
-        telugu_name: 'నవగ్రహ శాంతి హోమం',
-        description: 'Planetary appeasement ritual for health, prosperity and removal of obstacles',
-        category: 'Special Homam',
-        price: 1500.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '08:00 AM - 11:00 AM'
-      },
-      {
-        name: 'Suvasini Pooja & Kumkumarchana',
-        telugu_name: 'సువాసిని పూజ & కుంకుమార్చన',
-        description: 'Offering traditional tambulam, saree and kumkuma pooja to married women as divine forms',
-        category: 'Special Pooja',
-        price: 350.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '11:00 AM - 12:00 PM'
-      },
-      {
-        name: 'Lakshmi Narayana Sahasranama Pooja',
-        telugu_name: 'లక్ష్మీ నారాయణ సహస్రనామ పూజ',
-        description: 'Pooja on auspicious Ekadashi or Fridays with Tulasi and lotus petals',
-        category: 'Scheduled Special',
-        price: 500.00,
-        is_active: true,
-        is_scheduled: true,
-        scheduled_date: tomorrow,
-        timing: '05:30 PM - 07:00 PM'
-      },
-      {
-        name: 'Maha Ganapathi Homam',
-        telugu_name: 'మహా గణపతి హోమం',
-        description: 'Early morning oblations for removing all doshas and starting new endeavors',
-        category: 'Daily Pooja',
-        price: 750.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: '05:30 AM - 07:00 AM'
-      },
-      {
-        name: 'Karpura Harathi & Prasada Seva',
-        telugu_name: 'కర్పూర హారతి & ప్రసాద సేవ',
-        description: 'Evening deeparadhana with special Laddu and Panchamrita prasadam packet',
-        category: 'Daily Pooja',
-        price: 30.00,
-        is_active: true,
-        is_scheduled: false,
-        scheduled_date: null,
-        timing: 'All Day'
-      }
-    ];
+  for (const s of sevas) {
+    let sevaRes = await db.query(`SELECT id FROM sevas WHERE name = $1 LIMIT 1`, [s.name]);
+    let sevaId = sevaRes.rows[0]?.id;
 
-    for (const s of sevas) {
-      const sevaRes = await db.query(
+    if (!sevaId) {
+      const ins = await db.query(
         `INSERT INTO sevas (name, telugu_name, description, category, price, is_active, is_scheduled, scheduled_date, timing)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
         [s.name, s.telugu_name, s.description, s.category, s.price, s.is_active, s.is_scheduled, s.scheduled_date, s.timing]
       );
+      sevaId = ins.rows[0]?.id;
+    }
 
-      const sevaId = sevaRes.rows[0]?.id;
-      if (sevaId && poojariId) {
-        await db.query(
-          `INSERT INTO poojari_assignments (seva_id, poojari_id, is_primary)
-           VALUES ($1, $2, true)`,
-          [sevaId, poojariId]
-        );
-      }
+    if (sevaId && poojariId) {
+      await db.query(
+        `INSERT INTO poojari_assignments (seva_id, poojari_id, is_primary)
+         SELECT $1, $2, true
+         WHERE NOT EXISTS (
+           SELECT 1 FROM poojari_assignments WHERE seva_id = $1 AND poojari_id = $2
+         )`,
+        [sevaId, poojariId]
+      );
     }
   }
 
