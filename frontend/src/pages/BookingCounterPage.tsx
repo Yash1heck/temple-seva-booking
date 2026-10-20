@@ -264,16 +264,16 @@ export const BookingCounterPage: React.FC = () => {
         {/* LEFT COLUMN: Seva Catalogue & Search (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
           {/* Search & Category Pills */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E8DCCE] shadow-xs space-y-3">
+          <div className="bg-white p-2.5 sm:p-3.5 rounded-xl border border-[#E8DCCE] shadow-xs space-y-2 sm:space-y-2.5">
             <div className="relative">
               <input
                 type="text"
                 placeholder="పూజలను వెతకండి (ఉదా: అర్చన, అభిషేకం, కుంకుమార్చన, Archana)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-[#FAF5EC]/50 border border-[#E8DCCE] rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-medium"
+                className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-[#FAF5EC]/50 border border-[#E8DCCE] rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-medium"
               />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5 sm:top-3" />
             </div>
 
             {/* Category Pills (Horizontal Single-Row Track) */}
@@ -282,7 +282,7 @@ export const BookingCounterPage: React.FC = () => {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${
+                  className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${
                     selectedCategory === cat
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#2D2520] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
@@ -294,17 +294,17 @@ export const BookingCounterPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Sevas 2x/3x Squared Grid */}
+          {/* Sevas Dense 3-Column / 4-Column Grid */}
           {isLoadingSevas ? (
-            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-2xl border border-[#E8DCCE]">
+            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-xl border border-[#E8DCCE]">
               పూజా సేవల వివరాలు లోడ్ అవుతున్నాయి...
             </div>
           ) : filteredSevas.length === 0 ? (
-            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-2xl border border-[#E8DCCE]">
+            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-xl border border-[#E8DCCE]">
               మీ శోధనకు తగిన సేవలు లభించలేదు.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 sm:gap-2.5">
               {filteredSevas.map((seva) => {
                 const inCartItem = cart.find(item => item.seva.id === seva.id);
                 const inCartQty = inCartItem?.quantity || 0;
@@ -313,7 +313,7 @@ export const BookingCounterPage: React.FC = () => {
                   <div
                     key={seva.id}
                     onClick={() => addToCart(seva)}
-                    className={`group bg-white p-3 rounded-2xl border transition-all duration-150 flex flex-col justify-between shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer relative select-none ${
+                    className={`group bg-white p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between shadow-2xs hover:shadow-xs active:scale-[0.97] cursor-pointer relative select-none ${
                       inCartQty > 0
                         ? 'border-[#C86A1B] bg-amber-50/30 ring-1 ring-[#C86A1B]/40'
                         : 'border-[#E8DCCE] hover:border-[#C86A1B]/60'
@@ -321,56 +321,58 @@ export const BookingCounterPage: React.FC = () => {
                   >
                     {/* In-cart count badge */}
                     {inCartQty > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-[#7A1C23] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs border border-white font-mono">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-4.5 px-1 bg-[#7A1C23] text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-xs border border-white font-mono">
                         {inCartQty}
                       </span>
                     )}
 
                     {/* Top Section */}
                     <div>
-                      <div className="flex items-center justify-between gap-1 mb-1.5">
-                        <span className="text-[9px] font-bold text-[#7A1C23] bg-[#FAF5EC] px-1.5 py-0.5 rounded-md border border-[#E8DCCE] truncate max-w-[85px]">
+                      <div className="flex items-center justify-between gap-0.5 mb-1">
+                        <span className="text-[8px] sm:text-[9px] font-bold text-[#7A1C23] bg-[#FAF5EC] px-1 py-0.5 rounded border border-[#E8DCCE] truncate max-w-[65px] sm:max-w-[85px]">
                           {seva.category}
                         </span>
                         {seva.is_scheduled && (
-                          <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100/90 px-1.5 py-0.2 rounded border border-amber-300 shrink-0">
+                          <span className="text-[8px] sm:text-[9px] font-extrabold text-amber-900 bg-amber-100/90 px-1 py-0.2 rounded border border-amber-300 shrink-0">
                             విశేషం
                           </span>
                         )}
                       </div>
 
                       {/* Seva Name in Telugu */}
-                      <h3 className="font-bold text-xs sm:text-sm text-[#7A1C23] font-serif line-clamp-2 leading-snug group-hover:text-[#5C1217]">
+                      <h3 className="font-bold text-[11px] sm:text-xs text-[#7A1C23] font-serif line-clamp-2 leading-tight group-hover:text-[#5C1217]">
                         {seva.telugu_name || seva.name}
                       </h3>
 
                       {/* English Subtitle (if Telugu is different) */}
                       {seva.telugu_name && seva.name !== seva.telugu_name && (
-                        <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                        <p className="text-[9px] text-gray-500 truncate mt-0.5 leading-tight">
                           {seva.name}
                         </p>
                       )}
 
                       {/* Timing / Scheduled Date */}
-                      <div className="mt-1.5 space-y-0.5">
-                        {seva.timing && (
-                          <div className="text-[9px] text-gray-500 flex items-center gap-1 line-clamp-1">
-                            <span>⏰</span>
-                            <span className="truncate">{seva.timing}</span>
-                          </div>
-                        )}
-                        {seva.is_scheduled && seva.scheduled_date && (
-                          <div className="text-[9px] text-amber-900 font-bold flex items-center gap-1 line-clamp-1">
-                            <span>📅</span>
-                            <span className="truncate">{seva.scheduled_date}</span>
-                          </div>
-                        )}
-                      </div>
+                      {(seva.timing || (seva.is_scheduled && seva.scheduled_date)) && (
+                        <div className="mt-1 space-y-0.5">
+                          {seva.timing && (
+                            <div className="text-[8px] sm:text-[9px] text-gray-500 flex items-center gap-0.5 line-clamp-1">
+                              <span>⏰</span>
+                              <span className="truncate">{seva.timing}</span>
+                            </div>
+                          )}
+                          {seva.is_scheduled && seva.scheduled_date && (
+                            <div className="text-[8px] sm:text-[9px] text-amber-900 font-bold flex items-center gap-0.5 line-clamp-1">
+                              <span>📅</span>
+                              <span className="truncate">{seva.scheduled_date}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Bottom: Price & Quick Action */}
-                    <div className="flex items-center justify-between pt-2 mt-2.5 border-t border-[#E8DCCE]/60">
-                      <span className="text-xs sm:text-sm font-extrabold text-[#7A1C23] font-mono">
+                    <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-[#E8DCCE]/60">
+                      <span className="text-[11px] sm:text-xs font-black text-[#7A1C23] font-mono">
                         ₹{seva.price.toFixed(0)}
                       </span>
                       <button
@@ -379,10 +381,11 @@ export const BookingCounterPage: React.FC = () => {
                           e.stopPropagation();
                           addToCart(seva);
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 bg-[#C86A1B] hover:bg-[#A65311] active:scale-90 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-transform shrink-0"
+                        className="flex items-center justify-center gap-0.5 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-[#C86A1B] hover:bg-[#A65311] active:scale-90 text-white rounded-md sm:rounded-lg text-[10px] font-bold shadow-2xs transition-transform shrink-0"
+                        title="కార్ట్‌కు చేర్చు"
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>చేర్చు</span>
+                        <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline">చేర్చు</span>
                       </button>
                     </div>
                   </div>
