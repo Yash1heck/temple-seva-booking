@@ -581,19 +581,19 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Mobile Glass Metric Pill (Zero Clutter) */}
       {todaySummary && (
-        <div className="md:hidden glass-surface p-2.5 rounded-2xl flex items-center justify-between text-xs mb-3 shadow-xs">
+        <div className="md:hidden glass-surface p-3 rounded-2xl flex items-center justify-between text-sm mb-3 shadow-xs">
           <div className="flex items-center gap-1.5 font-bold text-[#7A1C23]">
             <span>💰 నికర వసూలు:</span>
-            <span className="font-mono text-emerald-800 font-bold">₹{formatCurrency(todaySummary?.financials?.net_collected_amount, 0)}</span>
+            <span className="font-mono text-emerald-800 font-bold text-base">₹{formatCurrency(todaySummary?.financials?.net_collected_amount, 0)}</span>
           </div>
-          <div className="text-[11px] font-semibold text-gray-600">
-            బుకింగ్‌లు: <strong className="text-[#7A1C23] font-mono">{todaySummary.total_bookings}</strong>
+          <div className="text-xs sm:text-sm font-semibold text-gray-700">
+            బుకింగ్‌లు: <strong className="text-[#7A1C23] font-mono text-sm">{todaySummary.total_bookings}</strong>
           </div>
         </div>
       )}
 
       {/* Mobile Unified Glass Control Center (Apple iOS Material 3) */}
-      <div className="md:hidden glass-surface p-3 rounded-2xl border border-white/80 space-y-2 mb-3 shadow-xs">
+      <div className="md:hidden glass-surface p-3.5 rounded-2xl border border-white/80 space-y-2.5 mb-3 shadow-xs">
         {/* Row 1: Section Dropdown + Target Date in ONE compact row */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex-1">
@@ -607,7 +607,7 @@ export const AdminDashboardPage: React.FC = () => {
                 if (tabId === 'retention') loadRetentionPreview();
                 if (tabId === 'audit') loadAuditLogs();
               }}
-              className="w-full bg-[#FAF5EC]/90 border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs rounded-xl py-1.5 px-2.5 focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+              className="w-full bg-[#FAF5EC]/90 border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
             >
               {[
                 { id: 'overview', label: '📖 బుకింగ్స్ & సమీక్ష' },
@@ -627,17 +627,17 @@ export const AdminDashboardPage: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <input
               type="date"
               value={reportDate}
               onChange={(e) => setReportDate(e.target.value)}
-              className="px-2 py-1 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-[11px] font-bold text-[#2D2520]"
+              className="px-2.5 py-1.5 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#2D2520]"
             />
             <button
               type="button"
               onClick={() => setReportDate(getTempleToday())}
-              className="px-2 py-1 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-[11px] font-bold text-[#7A1C23] hover:bg-[#F3ECE0]"
+              className="px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
             >
               నేడు
             </button>
@@ -654,12 +654,12 @@ export const AdminDashboardPage: React.FC = () => {
                 value={searchBooking}
                 onChange={(e) => setSearchBooking(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
-                className="w-full pl-8 pr-3 py-1.5 bg-white/90 border border-white rounded-xl text-xs text-[#2D2520] font-medium shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+                className="w-full pl-9 pr-3.5 py-2 bg-white/90 border border-white rounded-xl text-xs sm:text-sm text-[#2D2520] font-medium shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
               />
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             </div>
 
-            <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-[#E8DCCE]/40">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E8DCCE]/40">
               {[
                 { id: 'booking_date', label: 'కౌంటర్ బుకింగ్‌లు' },
                 { id: 'scheduled_date', label: 'సంకల్ప దినం' },
@@ -670,10 +670,10 @@ export const AdminDashboardPage: React.FC = () => {
                   key={f.id}
                   type="button"
                   onClick={() => setBookingFilterType(f.id as any)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                     bookingFilterType === f.id
                       ? 'bg-[#7A1C23] text-white shadow-2xs'
-                      : 'bg-[#FAF5EC] text-gray-600 hover:bg-[#F3ECE0] border border-[#E8DCCE]/70'
+                      : 'bg-[#FAF5EC] text-gray-700 hover:bg-[#F3ECE0] border border-[#E8DCCE]/70'
                   }`}
                 >
                   {f.label}
@@ -798,17 +798,17 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             ) : (
               filteredBookingsList.map((b: Booking) => (
-                <div key={b.id} className="glass-surface-interactive rounded-2xl p-3.5 border border-white/85 shadow-xs space-y-2">
+                <div key={b.id} className="glass-surface-interactive rounded-2xl p-3.5 sm:p-4 border border-white/85 shadow-xs space-y-2.5">
                   <div className="flex items-center justify-between border-b border-[#E8DCCE]/50 pb-2">
                     <div>
-                      <span className="font-mono font-bold text-sm text-[#7A1C23]">{b.booking_number}</span>
-                      <div className="text-[10px] text-gray-500">
+                      <span className="font-mono font-bold text-sm sm:text-base text-[#7A1C23]">{b.booking_number}</span>
+                      <div className="text-xs text-gray-500">
                         {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-bold text-[#7A1C23] font-mono">₹{formatCurrency(b.total_amount)}</div>
-                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                      <div className="text-base font-bold text-[#7A1C23] font-mono">₹{formatCurrency(b.total_amount)}</div>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-lg text-xs font-bold ${
                         b.payment_status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-800 border border-amber-500/20'
                       }`}>
                         {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'} • {b.payment_status === 'confirmed' ? 'స్వీకరించబడింది' : 'పెండింగ్'}
@@ -816,11 +816,11 @@ export const AdminDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-xs space-y-1">
+                  <div className="text-xs sm:text-sm space-y-1.5">
                     <div>
                       <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
                       <strong className="text-[#2D2520]">{toTeluguText(b.ritual_beneficiary_name)}</strong>
-                      {b.payer_mobile && <span className="text-[10px] text-gray-400 ml-1.5 font-mono">📱 {b.payer_mobile}</span>}
+                      {b.payer_mobile && <span className="text-xs text-gray-500 ml-1.5 font-mono">📱 {b.payer_mobile}</span>}
                     </div>
                     <div>
                       <span className="text-gray-500">గోత్రం:</span>{' '}
@@ -828,14 +828,14 @@ export const AdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Detailed Pooja Items */}
-                    <div className="pt-1 border-t border-[#E8DCCE]/40">
-                      <span className="text-gray-500 font-semibold text-[11px]">సేవలు & నిర్వహణ తేదీలు:</span>
+                    <div className="pt-1.5 border-t border-[#E8DCCE]/40">
+                      <span className="text-gray-600 font-semibold text-xs">సేవలు & నిర్వహణ తేదీలు:</span>
                       {b.items_summary && b.items_summary.length > 0 ? (
                         <div className="mt-1 space-y-1">
                           {b.items_summary.map((item: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between text-[11px] bg-white/70 p-1.5 rounded-xl border border-white">
+                            <div key={i} className="flex items-center justify-between text-xs bg-white/70 p-1.5 rounded-xl border border-white">
                               <span className="font-bold text-[#7A1C23]">{item.seva_name} ({item.quantity})</span>
-                              <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                                 item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                               }`}>
                                 📅 {item.scheduled_date || 'నేటి పూజ'}
@@ -844,19 +844,19 @@ export const AdminDashboardPage: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-[10px] text-gray-500">{b.ticket_count || 1} సేవా టికెట్లు</div>
+                        <div className="text-xs text-gray-500">{b.ticket_count || 1} సేవా టికెట్లు</div>
                       )}
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-[#E8DCCE]/50 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-500">
-                      స్థితి: {b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}
+                    <span className="text-xs font-medium text-gray-600">
+                      స్థితి: <strong className={b.booking_status === 'completed' ? 'text-emerald-700' : 'text-rose-700'}>{b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}</strong>
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleInspectBooking(b.id)}
-                        className="px-3 py-1 bg-white/80 border border-white text-[#7A1C23] font-bold text-xs rounded-xl hover:bg-white shadow-2xs"
+                        className="px-3.5 py-1.5 bg-white/90 border border-white text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl hover:bg-white shadow-2xs active:scale-95 transition-all"
                       >
                         టికెట్లు ముద్రించు
                       </button>
@@ -995,12 +995,17 @@ export const AdminDashboardPage: React.FC = () => {
       {/* TAB 2: SEVA CATALOGUE */}
       {activeTab === 'sevas' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 p-3 sm:p-4 rounded-2xl border border-[#E8DCCE]/80 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-[#7A1C23]">ఆలయ పూజా సేవల జాబితా</h2>
-              <p className="text-xs text-gray-500">ధరలు, విభాగాలు, నిర్వహణ సమయాలు మరియు అర్చకుల కేటాయింపులు.</p>
+              <h2 className="text-base sm:text-lg font-bold text-[#7A1C23] font-serif flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#C86A1B]" />
+                ఆలయ పూజా సేవల జాబితా (Sevas Catalogue)
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                ధరలు, విభాగాలు, నిర్వహణ సమయాలు మరియు అర్చకుల కేటాయింపులు
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={async () => {
@@ -1012,17 +1017,17 @@ export const AdminDashboardPage: React.FC = () => {
                     alert(err.message || 'సీడింగ్ విఫలమైంది');
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] hover:bg-[#F3ECE0] border border-[#E8DCCE] text-[#7A1C23] rounded-lg text-xs font-bold shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] hover:bg-[#F3ECE0] border border-[#E8DCCE] text-[#7A1C23] rounded-xl text-xs sm:text-sm font-bold shadow-xs active:scale-98 transition-all"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                అన్ని పూజలను సీడ్ చేయండి (Restore Sevas)
+                <RefreshCw className="w-4 h-4" />
+                <span>అన్ని పూజలను సీడ్ చేయండి (Restore)</span>
               </button>
               <button
                 onClick={() => setIsCreatingSeva(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg text-xs font-semibold shadow-sm"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm active:scale-98 transition-all"
               >
-                <Plus className="w-3.5 h-3.5" />
-                నూతన సేవను చేర్చండి
+                <Plus className="w-4 h-4" />
+                <span>కొత్త సేవను చేర్చండి (Add Seva)</span>
               </button>
             </div>
           </div>
@@ -1168,63 +1173,144 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {/* Sevas List Table */}
-          <div className="bg-white rounded-xl border border-[#E8DCCE] shadow-sm overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
+          {/* Mobile Seva Cards View (Zero Table Clipping) */}
+          <div className="sm:hidden space-y-3">
+            {sevas.map((s) => {
+              const hasPoojaris = s.assigned_poojaris && s.assigned_poojaris.length > 0;
+              return (
+                <div
+                  key={s.id}
+                  className="bg-white rounded-2xl p-4 border border-[#E8DCCE] shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#7A1C23]">{s.name}</h4>
+                      {s.telugu_name && (
+                        <div className="text-xs text-[#C86A1B] font-serif font-bold mt-0.5">
+                          {s.telugu_name}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        విభాగం: <span className="font-semibold text-gray-700">{s.category}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-base font-bold text-[#7A1C23] font-mono">₹{s.price.toFixed(2)}</div>
+                      <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        s.is_active ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}>
+                        {s.is_active ? '● Active' : '○ Inactive'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pooja Schedule & Assigned Poojari */}
+                  <div className="text-xs text-gray-600 bg-[#FAF5EC]/70 p-2.5 rounded-xl border border-[#E8DCCE] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">పూజా రకం:</span>
+                      {s.is_scheduled ? (
+                        <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                          📅 {s.scheduled_date}
+                        </span>
+                      ) : (
+                        <span className="font-bold text-emerald-800">నిత్య పూజ</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between pt-0.5">
+                      <span className="text-gray-500">అర్చకులు:</span>
+                      <span className="font-semibold text-[#2D2520]">
+                        {hasPoojaris && s.assigned_poojaris ? s.assigned_poojaris.map(p => p.name).join(', ') : 'అందరూ'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Grid: Edit & Activate/Deactivate side by side */}
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#FAF5EC]">
+                    <button
+                      onClick={() => handleStartEditSeva(s)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#FAF5EC] hover:bg-[#F3ECE0] text-[#7A1C23] text-xs font-bold border border-[#E8DCCE] active:scale-98 transition-all"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>సవరించు (Edit)</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleSevaStatus(s.id, s.is_active)}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all active:scale-98 ${
+                        s.is_active
+                          ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span>{s.is_active ? 'నిలిపివేయి' : 'ప్రారంభించు'}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Sevas Table View */}
+          <div className="hidden sm:block bg-white rounded-2xl border border-[#E8DCCE] shadow-sm overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[#FAF5EC] text-gray-700 font-bold border-b border-[#E8DCCE]">
                 <tr>
-                  <th className="py-3 px-4">సేవ పేరు</th>
-                  <th className="py-3 px-4">విభాగం</th>
-                  <th className="py-3 px-4">రుసుము</th>
-                  <th className="py-3 px-4">పూజా రకం / షెడ్యూల్</th>
-                  <th className="py-3 px-4">కేటాయించిన అర్చకులు</th>
-                  <th className="py-3 px-4">స్థితి</th>
-                  <th className="py-3 px-4 text-right">చర్యలు</th>
+                  <th className="py-3.5 px-4">సేవ పేరు (Seva Name)</th>
+                  <th className="py-3.5 px-4">విభాగం (Category)</th>
+                  <th className="py-3.5 px-4">రుసుము (Price)</th>
+                  <th className="py-3.5 px-4">పూజా రకం / షెడ్యూల్</th>
+                  <th className="py-3.5 px-4">కేటాయించిన అర్చకులు</th>
+                  <th className="py-3.5 px-4">స్థితి (Status)</th>
+                  <th className="py-3.5 px-4 text-right">చర్యలు (Actions)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#FAF5EC]">
                 {sevas.map((s) => (
                   <tr key={s.id} className="hover:bg-[#FAF5EC]/30">
-                    <td className="py-3 px-4 font-bold text-[#7A1C23]">
+                    <td className="py-3.5 px-4 font-bold text-[#7A1C23]">
                       {s.name}
-                      {s.telugu_name && <div className="text-[11px] text-[#C86A1B] font-serif">{s.telugu_name}</div>}
+                      {s.telugu_name && <div className="text-xs text-[#C86A1B] font-serif font-bold">{s.telugu_name}</div>}
                     </td>
-                    <td className="py-3 px-4 text-gray-600">{s.category}</td>
-                    <td className="py-3 px-4 font-bold">₹{s.price.toFixed(2)}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4 text-gray-600">{s.category}</td>
+                    <td className="py-3.5 px-4 font-bold font-mono">₹{s.price.toFixed(2)}</td>
+                    <td className="py-3.5 px-4">
                       {s.is_scheduled ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
                           📅 Scheduled: {s.scheduled_date}
                         </span>
                       ) : (
-                        <span className="text-gray-400">నిత్య పూజ</span>
+                        <span className="text-xs text-gray-500 font-medium">నిత్య పూజ</span>
                       )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4 text-xs">
                       {s.assigned_poojaris && s.assigned_poojaris.length > 0 ? (
                         s.assigned_poojaris.map(p => p.name).join(', ')
                       ) : (
                         <span className="text-gray-400 italic">None</span>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         s.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
                       }`}>
                         {s.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-3">
+                    <td className="py-3.5 px-4 text-right space-x-2">
                       <button
                         onClick={() => handleStartEditSeva(s)}
-                        className="text-xs font-semibold text-[#7A1C23] hover:underline inline-flex items-center gap-1"
+                        className="text-xs font-semibold text-[#7A1C23] hover:underline inline-flex items-center gap-1 bg-[#FAF5EC] px-3 py-1.5 rounded-lg border border-[#E8DCCE]"
                       >
                         <Edit className="w-3.5 h-3.5" />
                         సవరించు
                       </button>
                       <button
                         onClick={() => handleToggleSevaStatus(s.id, s.is_active)}
-                        className={`text-xs font-semibold ${s.is_active ? 'text-amber-700 hover:underline' : 'text-emerald-700 hover:underline'}`}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ${
+                          s.is_active
+                            ? 'text-amber-800 bg-amber-50/50 border-amber-200 hover:bg-amber-100'
+                            : 'text-emerald-800 bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100'
+                        }`}
                       >
                         {s.is_active ? 'Deactivate' : 'Activate'}
                       </button>
@@ -1421,75 +1507,83 @@ export const AdminDashboardPage: React.FC = () => {
       {/* TAB 3: STAFF & POOJARIS */}
       {activeTab === 'staff' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 p-3 sm:p-4 rounded-2xl border border-[#E8DCCE]/80 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-[#7A1C23]">Staff & Poojari Accounts</h2>
-              <p className="text-xs text-gray-500">Create poojari accounts and manage counter staff access credentials.</p>
+              <h2 className="text-base sm:text-lg font-bold text-[#7A1C23] font-serif flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#C86A1B]" />
+                సిబ్బంది & అర్చక ఖాతాలు (Staff & Poojari Accounts)
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                అర్చకులు & కౌంటర్ సిబ్బంది యూజర్ ఐడీలు, అనుమతులు మరియు పాస్‌వర్డ్ నిర్వహణ
+              </p>
             </div>
             <button
               onClick={() => setIsCreatingUser(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-md text-xs font-semibold shadow-sm"
+              className="shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#7A1C23] hover:bg-[#5C1217] active:scale-98 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Add User
+              <Plus className="w-4 h-4" />
+              <span>కొత్త యూజర్‌ను చేర్చండి (Add User)</span>
             </button>
           </div>
 
           {isCreatingUser && (
-            <div className="p-5 bg-white border border-[#E8DCCE] rounded-xl shadow-md space-y-4">
-              <h3 className="font-bold text-sm text-[#7A1C23]">Create Staff or Poojari Account</h3>
-              <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 sm:p-5 bg-white border border-[#E8DCCE] rounded-2xl shadow-md space-y-4">
+              <h3 className="font-bold text-sm sm:text-base text-[#7A1C23] font-serif flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#C86A1B]" />
+                సిబ్బంది లేదా అర్చక ఖాతాను సృష్టించండి (Create Account)
+              </h3>
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
                 <div>
-                  <label className="block font-semibold mb-1">Username *</label>
+                  <label className="block font-semibold mb-1 text-gray-700">మొబైల్ సంఖ్య / యూజర్‌నేమ్ (Username) *</label>
                   <input
                     type="text"
                     required
                     value={newUser.username}
                     onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
-                    placeholder="e.g. poojari_sharma"
+                    className="w-full px-3 py-2 border border-[#E8DCCE] rounded-xl bg-[#FAF5EC]/40 text-sm focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+                    placeholder="మొబైల్ నంబర్ లేదా యూజర్‌నేమ్ (e.g. 9849012345)"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Full Name *</label>
+                  <label className="block font-semibold mb-1 text-gray-700">పూర్తి పేరు (Full Name) *</label>
                   <input
                     type="text"
                     required
                     value={newUser.name}
                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
+                    className="w-full px-3 py-2 border border-[#E8DCCE] rounded-xl bg-[#FAF5EC]/40 text-sm focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
                     placeholder="e.g. Sri Sharma Deekshitulu"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Role *</label>
+                  <label className="block font-semibold mb-1 text-gray-700">పాత్ర / హోదా (Role) *</label>
                   <select
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
-                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
+                    className="w-full px-3 py-2 border border-[#E8DCCE] rounded-xl bg-[#FAF5EC]/40 text-sm focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
                   >
-                    <option value="poojari">Poojari (Read-only Dashboard)</option>
-                    <option value="booking_staff">Booking Counter Staff</option>
-                    <option value="admin">Administrator</option>
+                    <option value="poojari">అర్చకులు / పూజారి (Poojari - Ritual Dashboard)</option>
+                    <option value="booking_staff">కౌంటర్ సిబ్బంది (Booking Counter Staff)</option>
+                    <option value="admin">నిర్వాహకులు (Administrator)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold mb-1">Password *</label>
+                  <label className="block font-semibold mb-1 text-gray-700">పాస్‌వర్డ్ (Password) *</label>
                   <div className="relative">
                     <input
                       type={showNewUserPass ? 'text' : 'password'}
                       required
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      className="w-full px-3 pr-8 py-1.5 border rounded bg-[#FAF5EC]/40"
-                      placeholder="Minimum 6 characters"
+                      className="w-full px-3 pr-10 py-2 border border-[#E8DCCE] rounded-xl bg-[#FAF5EC]/40 text-sm focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
+                      placeholder="కనీసం 6 అక్షరాలు (Min 6 chars)"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewUserPass(!showNewUserPass)}
-                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                     >
-                      {showNewUserPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showNewUserPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -1497,69 +1591,138 @@ export const AdminDashboardPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsCreatingUser(false)}
-                    className="px-3 py-1.5 border rounded bg-white text-gray-600"
+                    className="px-4 py-2 border border-[#E8DCCE] rounded-xl bg-white text-gray-600 text-xs sm:text-sm font-semibold hover:bg-gray-50"
                   >
-                    రద్దు
+                    రద్దు (Cancel)
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-[#7A1C23] text-white rounded font-semibold"
+                    className="px-5 py-2 bg-[#7A1C23] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#5C1217]"
                   >
-                    Create Account
+                    ఖాతా సృష్టించు (Create Account)
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-[#E8DCCE] shadow-sm overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF5EC] text-gray-700 font-semibold border-b border-[#E8DCCE]">
+          {/* Mobile User Cards View (Zero Overflow, Touch-Friendly) */}
+          <div className="sm:hidden space-y-3">
+            {staffUsers.map((u) => {
+              const isActive = (u as any).is_active !== false;
+              return (
+                <div
+                  key={u.id}
+                  className="bg-white rounded-2xl p-4 border border-[#E8DCCE] shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#2D2520]">{u.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs font-mono text-gray-600 bg-[#FAF5EC] px-2 py-0.5 rounded-md border border-[#E8DCCE]">
+                          @{u.username}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-[#FAF5EC] text-[#7A1C23] border border-[#E8DCCE]">
+                        {u.role === 'booking_staff' ? 'కౌంటర్ సిబ్బంది' : u.role === 'poojari' ? 'అర్చకులు' : 'అడ్మిన్'}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        isActive
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : 'bg-red-100 text-red-700 border border-red-200'
+                      }`}>
+                        {isActive ? '● Active' : '○ Disabled'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Grid: Side-by-side, 100% visible and easy to tap on mobile */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#FAF5EC]">
+                    <button
+                      onClick={() => {
+                        setResettingUser(u);
+                        setNewPasswordValue('');
+                        setPasswordStatusMsg(null);
+                      }}
+                      className="flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-[#FAF5EC] hover:bg-[#F3ECE0] text-[#7A1C23] text-xs font-bold border border-[#E8DCCE] active:scale-98 transition-all"
+                    >
+                      <span>🔑 పాస్‌వర్డ్ రీసెట్</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleUserStatus(u.id, isActive)}
+                      className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold border transition-all active:scale-98 ${
+                        isActive
+                          ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span>{isActive ? '🚫 ఖాతా నిలిపివేయి (Disable)' : '✅ పునరుద్ధరించు (Enable)'}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden sm:block bg-white rounded-2xl border border-[#E8DCCE] shadow-sm overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[#FAF5EC] text-gray-700 font-bold border-b border-[#E8DCCE]">
                 <tr>
-                  <th className="py-3 px-4">Name</th>
-                  <th className="py-3 px-4">Username</th>
-                  <th className="py-3 px-4">Role</th>
-                  <th className="py-3 px-4">స్థితి</th>
-                  <th className="py-3 px-4 text-right">చర్యలు</th>
+                  <th className="py-3.5 px-4">పేరు (Name)</th>
+                  <th className="py-3.5 px-4">యూజర్‌నేమ్ (Username)</th>
+                  <th className="py-3.5 px-4">పాత్ర (Role)</th>
+                  <th className="py-3.5 px-4">స్థితి (Status)</th>
+                  <th className="py-3.5 px-4 text-right">చర్యలు (Actions)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#FAF5EC]">
-                {staffUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#FAF5EC]/30">
-                    <td className="py-3 px-4 font-bold text-[#2D2520]">{u.name}</td>
-                    <td className="py-3 px-4 font-mono text-gray-600">{u.username}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#FAF5EC] text-[#7A1C23] border border-[#E8DCCE]">
-                        {u.role === 'booking_staff' ? 'Counter Staff' : u.role}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        (u as any).is_active !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {(u as any).is_active !== false ? 'Active' : 'Disabled'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          setResettingUser(u);
-                          setNewPasswordValue('');
-                          setPasswordStatusMsg(null);
-                        }}
-                        className="text-xs font-semibold text-[#7A1C23] hover:underline bg-[#FAF5EC] px-2 py-1 rounded-lg border border-[#E8DCCE]"
-                      >
-                        పాస్‌వర్డ్ మార్చు (Reset)
-                      </button>
-                      <button
-                        onClick={() => handleToggleUserStatus(u.id, (u as any).is_active !== false)}
-                        className="text-xs font-semibold text-gray-600 hover:text-red-700 px-2 py-1"
-                      >
-                        {(u as any).is_active !== false ? 'Disable' : 'Enable'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {staffUsers.map((u) => {
+                  const isActive = (u as any).is_active !== false;
+                  return (
+                    <tr key={u.id} className="hover:bg-[#FAF5EC]/30">
+                      <td className="py-3.5 px-4 font-bold text-[#2D2520]">{u.name}</td>
+                      <td className="py-3.5 px-4 font-mono text-gray-600">{u.username}</td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase bg-[#FAF5EC] text-[#7A1C23] border border-[#E8DCCE]">
+                          {u.role === 'booking_staff' ? 'కౌంటర్ సిబ్బంది' : u.role === 'poojari' ? 'అర్చకులు' : 'అడ్మిన్'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
+                          isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {isActive ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-2">
+                        <button
+                          onClick={() => {
+                            setResettingUser(u);
+                            setNewPasswordValue('');
+                            setPasswordStatusMsg(null);
+                          }}
+                          className="text-xs font-semibold text-[#7A1C23] hover:underline bg-[#FAF5EC] px-3 py-1.5 rounded-lg border border-[#E8DCCE]"
+                        >
+                          పాస్‌వర్డ్ మార్చు (Reset)
+                        </button>
+                        <button
+                          onClick={() => handleToggleUserStatus(u.id, isActive)}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ${
+                            isActive
+                              ? 'text-red-700 bg-red-50/50 border-red-200 hover:bg-red-100'
+                              : 'text-emerald-700 bg-emerald-50/50 border-emerald-200 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {isActive ? 'Disable' : 'Enable'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1580,20 +1743,20 @@ export const AdminDashboardPage: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="text-xs text-gray-600 space-y-1">
+                <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                   <p><span className="font-bold text-[#2D2520]">వినియోగదారు:</span> {resettingUser.name}</p>
-                  <p><span className="font-bold text-[#2D2520]">యూజర్‌నేమ్:</span> <span className="font-mono">{resettingUser.username}</span></p>
+                  <p><span className="font-bold text-[#2D2520]">యూజర్‌నేమ్:</span> <span className="font-mono bg-[#FAF5EC] px-1.5 py-0.5 rounded border border-[#E8DCCE]">@{resettingUser.username}</span></p>
                 </div>
 
                 {passwordStatusMsg && (
-                  <div className="p-2.5 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200">
+                  <div className="p-2.5 rounded-lg bg-red-50 text-red-700 text-xs sm:text-sm border border-red-200">
                     {passwordStatusMsg}
                   </div>
                 )}
 
                 <form onSubmit={handleResetPassword} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-[#7A1C23] mb-1 font-serif">
+                    <label className="block text-xs sm:text-sm font-bold text-[#7A1C23] mb-1 font-serif">
                       నూతన రహస్య సంకేతం (New Password)
                     </label>
                     <div className="relative">
@@ -1603,15 +1766,15 @@ export const AdminDashboardPage: React.FC = () => {
                         minLength={6}
                         value={newPasswordValue}
                         onChange={(e) => setNewPasswordValue(e.target.value)}
-                        placeholder="కనీసం 6 అక్షరాలు"
-                        className="w-full pl-3 pr-8 py-2 text-xs bg-[#FAF5EC]/70 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold"
+                        placeholder="కనీసం 6 అక్షరాలు (Min 6 chars)"
+                        className="w-full pl-3 pr-10 py-2.5 text-sm bg-[#FAF5EC]/70 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold"
                       />
                       <button
                         type="button"
                         onClick={() => setShowResetPass(!showResetPass)}
-                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        {showResetPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {showResetPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -1620,14 +1783,14 @@ export const AdminDashboardPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setResettingUser(null)}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                      className="flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
                     >
                       రద్దు (Cancel)
                     </button>
                     <button
                       type="submit"
                       disabled={isSavingPassword}
-                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-[#7A1C23] hover:bg-[#912028] transition-colors"
+                      className="flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#7A1C23] hover:bg-[#912028] transition-colors shadow-sm"
                     >
                       {isSavingPassword ? 'సేవ్ అవుతోంది...' : 'సేవ్ చేయండి (Save)'}
                     </button>

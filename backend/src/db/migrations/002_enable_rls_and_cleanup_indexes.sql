@@ -28,3 +28,4 @@ DROP INDEX IF EXISTS idx_sevas_scheduled;
 
 -- Devotee lookup queries mobile (idx_devotees_mobile), not gothra in isolation
 DROP INDEX IF EXISTS idx_devotees_gothra;
+
