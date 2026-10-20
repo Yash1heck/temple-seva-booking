@@ -537,7 +537,7 @@ export const AdminDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <input
             type="date"
             value={reportDate}
@@ -652,9 +652,18 @@ export const AdminDashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setReportDate(getTempleToday())}
-              className="px-3 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
+              className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
+              title="నేటి తేదీ (Today)"
             >
               నేడు
+            </button>
+            <button
+              type="button"
+              onClick={loadOverview}
+              className="p-2 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
+              title="తాజా సమాచారం (Refresh)"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

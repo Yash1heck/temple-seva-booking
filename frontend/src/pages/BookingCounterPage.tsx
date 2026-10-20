@@ -276,13 +276,13 @@ export const BookingCounterPage: React.FC = () => {
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
             </div>
 
-            {/* Category Pills */}
-            <div className="flex flex-wrap gap-1.5">
+            {/* Category Pills (Horizontal Single-Row Track) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-0.5 px-0.5">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${
                     selectedCategory === cat
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'bg-[#FAF5EC] text-[#2D2520] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
@@ -294,61 +294,100 @@ export const BookingCounterPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Sevas Grid */}
+          {/* Sevas 2x/3x Squared Grid */}
           {isLoadingSevas ? (
-            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-xl border border-[#E8DCCE]">
+            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-2xl border border-[#E8DCCE]">
               పూజా సేవల వివరాలు లోడ్ అవుతున్నాయి...
             </div>
           ) : filteredSevas.length === 0 ? (
-            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-xl border border-[#E8DCCE]">
+            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-2xl border border-[#E8DCCE]">
               మీ శోధనకు తగిన సేవలు లభించలేదు.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredSevas.map((seva) => (
-                <div
-                  key={seva.id}
-                  className="bg-white p-3 rounded-xl border border-[#E8DCCE] hover:border-[#C86A1B] transition-all hover:shadow-xs flex items-center justify-between gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="font-bold text-xs sm:text-sm text-[#7A1C23] font-serif truncate">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5">
+              {filteredSevas.map((seva) => {
+                const inCartItem = cart.find(item => item.seva.id === seva.id);
+                const inCartQty = inCartItem?.quantity || 0;
+
+                return (
+                  <div
+                    key={seva.id}
+                    onClick={() => addToCart(seva)}
+                    className={`group bg-white p-3 rounded-2xl border transition-all duration-150 flex flex-col justify-between shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer relative select-none ${
+                      inCartQty > 0
+                        ? 'border-[#C86A1B] bg-amber-50/30 ring-1 ring-[#C86A1B]/40'
+                        : 'border-[#E8DCCE] hover:border-[#C86A1B]/60'
+                    }`}
+                  >
+                    {/* In-cart count badge */}
+                    {inCartQty > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-[#7A1C23] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs border border-white font-mono">
+                        {inCartQty}
+                      </span>
+                    )}
+
+                    {/* Top Section */}
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <span className="text-[9px] font-bold text-[#7A1C23] bg-[#FAF5EC] px-1.5 py-0.5 rounded-md border border-[#E8DCCE] truncate max-w-[85px]">
+                          {seva.category}
+                        </span>
+                        {seva.is_scheduled && (
+                          <span className="text-[9px] font-extrabold text-amber-900 bg-amber-100/90 px-1.5 py-0.2 rounded border border-amber-300 shrink-0">
+                            విశేషం
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Seva Name in Telugu */}
+                      <h3 className="font-bold text-xs sm:text-sm text-[#7A1C23] font-serif line-clamp-2 leading-snug group-hover:text-[#5C1217]">
                         {seva.telugu_name || seva.name}
                       </h3>
-                      <span className="text-[10px] font-bold text-gray-500 bg-[#FAF5EC] px-1.5 py-0.5 rounded border border-[#E8DCCE]">
-                        {seva.category}
+
+                      {/* English Subtitle (if Telugu is different) */}
+                      {seva.telugu_name && seva.name !== seva.telugu_name && (
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                          {seva.name}
+                        </p>
+                      )}
+
+                      {/* Timing / Scheduled Date */}
+                      <div className="mt-1.5 space-y-0.5">
+                        {seva.timing && (
+                          <div className="text-[9px] text-gray-500 flex items-center gap-1 line-clamp-1">
+                            <span>⏰</span>
+                            <span className="truncate">{seva.timing}</span>
+                          </div>
+                        )}
+                        {seva.is_scheduled && seva.scheduled_date && (
+                          <div className="text-[9px] text-amber-900 font-bold flex items-center gap-1 line-clamp-1">
+                            <span>📅</span>
+                            <span className="truncate">{seva.scheduled_date}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom: Price & Quick Action */}
+                    <div className="flex items-center justify-between pt-2 mt-2.5 border-t border-[#E8DCCE]/60">
+                      <span className="text-xs sm:text-sm font-extrabold text-[#7A1C23] font-mono">
+                        ₹{seva.price.toFixed(0)}
                       </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 flex-wrap">
-                      {seva.timing && (
-                        <span className="flex items-center gap-0.5">
-                          ⏰ {seva.timing}
-                        </span>
-                      )}
-                      {seva.is_scheduled && seva.scheduled_date && (
-                        <span className="inline-flex items-center gap-0.5 text-amber-900 font-bold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                          📅 {seva.scheduled_date}
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(seva);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-[#C86A1B] hover:bg-[#A65311] active:scale-90 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-transform shrink-0"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>చేర్చు</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-extrabold text-[#7A1C23] font-mono">
-                      ₹{seva.price.toFixed(0)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => addToCart(seva)}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-[#C86A1B] hover:bg-[#A65311] text-white rounded-lg text-xs font-bold shadow-2xs active:scale-95 transition-all"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      చేర్చు
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
