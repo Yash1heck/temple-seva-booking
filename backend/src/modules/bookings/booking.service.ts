@@ -317,7 +317,13 @@ export class BookingService {
     const pRes = await db.query(`SELECT * FROM payments WHERE booking_id = $1 ORDER BY created_at DESC LIMIT 1`, [bookingId]);
 
     booking.total_amount = parseFloat(booking.total_amount) || 0;
-    const tickets = tRes.rows.map(t => ({ ...t, amount: parseFloat(t.amount) || 0 }));
+    const paymentRecord = pRes.rows[0] ? { ...pRes.rows[0], amount: parseFloat(pRes.rows[0].amount) || 0 } : null;
+    const tickets = tRes.rows.map(t => ({
+      ...t,
+      amount: parseFloat(t.amount) || 0,
+      payment_method: paymentRecord?.payment_method || 'cash',
+      payment_status: paymentRecord?.payment_status || 'confirmed'
+    }));
     const items = iRes.rows.map(i => ({
       ...i,
       seva_price_snapshot: parseFloat(i.seva_price_snapshot) || 0,
@@ -328,7 +334,7 @@ export class BookingService {
       booking,
       items,
       tickets,
-      payment: pRes.rows[0] ? { ...pRes.rows[0], amount: parseFloat(pRes.rows[0].amount) || 0 } : null
+      payment: paymentRecord
     };
   }
 

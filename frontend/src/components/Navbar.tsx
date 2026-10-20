@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
-import { LogOut, Calendar, Shield, BookOpen, Layers, Sparkles } from 'lucide-react';
+import { LogOut, Calendar, Shield, BookOpen, Layers, Sparkles, Settings, FileText, CheckSquare } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -10,6 +10,7 @@ export const Navbar: React.FC = () => {
   if (!user || location.pathname === '/login' || location.pathname === '/devotee-booking' || location.pathname === '/book-seva') return null;
 
   const isActive = (path: string) => location.pathname === path;
+  const isTabActive = (tab: string) => location.pathname === '/admin' && (new URLSearchParams(location.search).get('tab') || 'overview') === tab;
 
   return (
     <>
@@ -34,7 +35,7 @@ export const Navbar: React.FC = () => {
 
             {/* Desktop Navigation Links */}
             <nav className="hidden md:flex items-center gap-1.5">
-              {(user.role === 'admin' || user.role === 'booking_staff') && (
+              {user.role === 'booking_staff' && (
                 <>
                   <Link
                     to="/counter"
@@ -78,7 +79,7 @@ export const Navbar: React.FC = () => {
               {user.role === 'admin' && (
                 <Link
                   to="/admin"
-                  className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                     isActive('/admin')
                       ? 'bg-[#7A1C23] text-white shadow-xs'
                       : 'text-[#2D2520] hover:bg-[#F3ECE0]'
@@ -91,7 +92,7 @@ export const Navbar: React.FC = () => {
             </nav>
 
             {/* User profile & Logout */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="text-right">
                 <div className="text-xs font-bold text-[#2D2520]">{user.name}</div>
                 <div className="text-[10px] font-medium text-[#7A1C23] bg-amber-100/70 px-1.5 py-0.2 rounded font-serif">
@@ -102,6 +103,18 @@ export const Navbar: React.FC = () => {
                     : 'అర్చక బృందం (Poojari)'}
                 </div>
               </div>
+
+              {/* Quick Settings Icon for Admin */}
+              {user.role === 'admin' && (
+                <Link
+                  to="/admin?tab=settings"
+                  title="ఆలయ అమరికలు & సెట్టింగ్స్"
+                  className="p-2 rounded-lg border border-[#E8DCCE] bg-[#FAF5EC] hover:bg-[#F3ECE0] text-[#7A1C23] transition-colors shrink-0"
+                >
+                  <Settings className="w-4 h-4 text-[#C86A1B]" />
+                </Link>
+              )}
+
               <button
                 onClick={logout}
                 title="లాగౌట్"
@@ -115,8 +128,9 @@ export const Navbar: React.FC = () => {
       </header>
 
       {/* Mobile Floating Glass Tab Bar (Apple iOS 18 style dock) */}
-      <div className="md:hidden fixed bottom-3 left-4 right-4 z-50 glass-surface rounded-full border border-white/80 shadow-xl px-4 py-1.5 flex items-center justify-around">
-        {(user.role === 'admin' || user.role === 'booking_staff') && (
+      <div className="md:hidden fixed bottom-3 left-4 right-4 z-50 glass-surface rounded-full border border-white/80 shadow-xl px-3 py-1.5 flex items-center justify-around">
+        {/* Counter Staff Mobile Dock */}
+        {user.role === 'booking_staff' && (
           <>
             <Link
               to="/counter"
@@ -143,10 +157,11 @@ export const Navbar: React.FC = () => {
           </>
         )}
 
+        {/* Poojari Mobile Dock */}
         {user.role === 'poojari' && (
           <Link
             to="/poojari"
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-lg text-[10px] font-bold transition-all ${
               isActive('/poojari')
                 ? 'text-[#7A1C23] bg-amber-100/80 font-extrabold'
                 : 'text-gray-600 hover:text-[#7A1C23]'
@@ -157,18 +172,43 @@ export const Navbar: React.FC = () => {
           </Link>
         )}
 
+        {/* High-Frequency Daily Admin Mobile Dock (ONLY Daily Essentials!) */}
         {user.role === 'admin' && (
-          <Link
-            to="/admin"
-            className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg text-[10px] font-bold transition-all ${
-              isActive('/admin')
-                ? 'text-[#7A1C23] bg-amber-100/80 font-extrabold'
-                : 'text-gray-600 hover:text-[#7A1C23]'
-            }`}
-          >
-            <Shield className="w-5 h-5 mb-0.5" />
-            నిర్వహణ
-          </Link>
+          <>
+            <Link
+              to="/admin?tab=overview"
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all ${
+                isTabActive('overview')
+                  ? 'text-[#7A1C23] bg-amber-100/80 font-extrabold'
+                  : 'text-gray-600 hover:text-[#7A1C23]'
+              }`}
+            >
+              <BookOpen className="w-5 h-5 mb-0.5 text-[#7A1C23]" />
+              బుకింగ్స్ & పూజలు
+            </Link>
+            <Link
+              to="/admin?tab=reports"
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all ${
+                isTabActive('reports')
+                  ? 'text-[#7A1C23] bg-amber-100/80 font-extrabold'
+                  : 'text-gray-600 hover:text-[#7A1C23]'
+              }`}
+            >
+              <FileText className="w-5 h-5 mb-0.5 text-emerald-700" />
+              నేటి వసూళ్లు
+            </Link>
+            <Link
+              to="/admin?tab=closure"
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl text-[10px] font-bold transition-all ${
+                isTabActive('closure')
+                  ? 'text-[#7A1C23] bg-amber-100/80 font-extrabold'
+                  : 'text-gray-600 hover:text-[#7A1C23]'
+              }`}
+            >
+              <CheckSquare className="w-5 h-5 mb-0.5 text-[#C86A1B]" />
+              రోజు ముగింపు
+            </Link>
+          </>
         )}
       </div>
     </>

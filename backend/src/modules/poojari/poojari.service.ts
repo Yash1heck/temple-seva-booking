@@ -182,6 +182,50 @@ export class PoojariService {
   }
 
   /**
+   * Marks ALL tickets belonging to a specific booking as completed.
+   */
+  static async markBookingCompleted(
+    bookingId: string,
+    actorId: string,
+    client?: IDatabaseClient
+  ): Promise<any> {
+    const db = client || await getDb();
+    const res = await db.query(
+      `UPDATE tickets
+       SET status = 'completed',
+           completed_at = COALESCE(completed_at, NOW()),
+           completed_by = COALESCE(completed_by, $2)
+       WHERE booking_id = $1
+       RETURNING id, ticket_number, booking_id, status, completed_at`,
+      [bookingId, actorId]
+    );
+
+    if (res.rows.length === 0) {
+      throw new Error('No tickets found for this booking');
+    }
+
+    await db.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, details)
+       VALUES ($1, 'BOOKING_SANKALPAM_COMPLETED', 'booking', $2, $3)`,
+      [
+        actorId,
+        bookingId,
+        JSON.stringify({
+          booking_id: bookingId,
+          tickets_completed: res.rows.length,
+          ticket_numbers: res.rows.map(r => r.ticket_number)
+        })
+      ]
+    );
+
+    return {
+      success: true,
+      updated_count: res.rows.length,
+      tickets: res.rows
+    };
+  }
+
+  /**
    * Batch marks all pending tickets for a specific ritual date (and optional seva) as completed.
    * Useful for high-volume temple seva batches and administrative end-of-day closure.
    */

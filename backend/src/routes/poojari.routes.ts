@@ -23,6 +23,24 @@ export async function poojariRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Mark all tickets for an entire Booking as Completed (Admin 1-Click Sankalpa Completion)
+  fastify.post('/complete-booking', { preHandler: [requireRole(['poojari', 'admin'])] }, async (request, reply) => {
+    const schema = z.object({
+      booking_id: z.string().uuid('Invalid booking id')
+    });
+    const parsed = schema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.errors[0].message });
+    }
+
+    try {
+      const result = await PoojariService.markBookingCompleted(parsed.data.booking_id, request.user!.id);
+      return result;
+    } catch (err: any) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
   // Batch Mark Tickets as Completed (Whole Seva batch or End of Day closure)
   fastify.post('/batch-complete', { preHandler: [requireRole(['poojari', 'admin'])] }, async (request, reply) => {
     const schema = z.object({

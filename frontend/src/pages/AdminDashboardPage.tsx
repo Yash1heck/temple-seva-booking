@@ -3,6 +3,8 @@ import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 import { toTeluguSevaName } from '../utils/teluguTransliteration.js';
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { playTempleBell } from '../utils/templeAudio.js';
 import { Seva, Booking, User, Ticket } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { TicketPrintModal } from '../components/TicketPrintModal.js';
@@ -16,16 +18,41 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'schedule' | 'sevas' | 'staff' | 'reports' | 'closure' | 'retention' | 'audit' | 'settings'>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as any) || 'overview';
+  const [activeTab, setActiveTab] = useState<'overview' | 'schedule' | 'sevas' | 'staff' | 'reports' | 'closure' | 'retention' | 'audit' | 'settings'>(initialTab);
 
   // Overview Data
   const [reportDate, setReportDate] = useState(getTempleToday());
   const [bookingFilterType, setBookingFilterType] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
+  const [sankalpaFilter, setSankalpaFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [completingBookingId, setCompletingBookingId] = useState<string | null>(null);
   const [todaySummary, setTodaySummary] = useState<any>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchBooking, setSearchBooking] = useState('');
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [isBulkCompletingOverview, setIsBulkCompletingOverview] = useState(false);
+
+  // Sync tab with URL
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') as any;
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+      if (tabFromUrl === 'reports') loadReport();
+      if (tabFromUrl === 'closure') loadClosureStatus();
+      if (tabFromUrl === 'retention') loadRetentionPreview();
+      if (tabFromUrl === 'audit') loadAuditLogs();
+    }
+  }, [searchParams]);
+
+  const switchTab = (tabId: any) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+    if (tabId === 'reports') loadReport();
+    if (tabId === 'closure') loadClosureStatus();
+    if (tabId === 'retention') loadRetentionPreview();
+    if (tabId === 'audit') loadAuditLogs();
+  };
 
   const handleAdminBatchComplete = async () => {
     const confirmMsg = `శ్రీ శృంగేరి శారదా పీఠం సన్నిధానం:\n\nతేదీ: ${reportDate}\nఈ తేదీకి సంబంధించిన అన్ని పెండింగ్ పూజలను ఒకేసారి పూర్తి చేయాలనుకుంటున్నారా?`;
@@ -37,6 +64,7 @@ export const AdminDashboardPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ target_date: reportDate })
       });
+      playTempleBell(0.4);
       await loadBookings();
       await loadOverview();
       alert('ఈ తేదీకి సంబంధించిన పూజలు విజయవంతంగా పూర్తి చేయబడ్డాయి.');
@@ -44,6 +72,22 @@ export const AdminDashboardPage: React.FC = () => {
       alert(err.message || 'పూజలు నమోదు చేయడం విఫలమైంది');
     } finally {
       setIsBulkCompletingOverview(false);
+    }
+  };
+
+  const handleMarkBookingComplete = async (bookingId: string) => {
+    setCompletingBookingId(bookingId);
+    try {
+      await apiRequest('/poojari/complete-booking', {
+        method: 'POST',
+        body: JSON.stringify({ booking_id: bookingId })
+      });
+      playTempleBell(0.3);
+      await loadBookings();
+    } catch (err: any) {
+      alert(err.message || 'సంకల్ప నమోదు విఫలమైంది');
+    } finally {
+      setCompletingBookingId(null);
     }
   };
 
@@ -365,7 +409,7 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   // Strict ritual date isolation: hide sevas belonging to other dates when viewing a specific ritual day
-  const filteredBookingsList = useMemo<Booking[]>(() => {
+  const baseBookingsList = useMemo<Booking[]>(() => {
     if (bookingFilterType === 'scheduled_date' && reportDate) {
       return (bookings as Booking[]).map(b => {
         const relevantItems = (b.items_summary || []).filter((item: any) =>
@@ -379,6 +423,48 @@ export const AdminDashboardPage: React.FC = () => {
     }
     return bookings;
   }, [bookings, bookingFilterType, reportDate]);
+
+  // Real-time Sankalpa counts (Pending vs Completed) for badges and quick filtering
+  const sankalpaStats = useMemo(() => {
+    let pendingCount = 0;
+    let completedCount = 0;
+    for (const b of baseBookingsList) {
+      if (b.booking_status === 'cancelled') continue;
+      const total = b.ticket_count || 1;
+      const done = b.completed_ticket_count || 0;
+      if (total > 0 && done >= total) {
+        completedCount++;
+      } else {
+        pendingCount++;
+      }
+    }
+    return {
+      total: baseBookingsList.length,
+      pending: pendingCount,
+      completed: completedCount
+    };
+  }, [baseBookingsList]);
+
+  // Final filtered list based on Sankalpam status (All / Pending / Completed)
+  const filteredBookingsList = useMemo<Booking[]>(() => {
+    if (sankalpaFilter === 'pending') {
+      return baseBookingsList.filter(b => {
+        if (b.booking_status === 'cancelled') return false;
+        const total = b.ticket_count || 1;
+        const done = b.completed_ticket_count || 0;
+        return done < total;
+      });
+    }
+    if (sankalpaFilter === 'completed') {
+      return baseBookingsList.filter(b => {
+        if (b.booking_status === 'cancelled') return false;
+        const total = b.ticket_count || 1;
+        const done = b.completed_ticket_count || 0;
+        return total > 0 && done >= total;
+      });
+    }
+    return baseBookingsList;
+  }, [baseBookingsList, sankalpaFilter]);
 
   const handleCreateSeva = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -662,78 +748,64 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Mobile Unified Glass Control Center (Apple iOS Material 3) */}
       <div className="md:hidden glass-surface p-3.5 rounded-2xl border border-white/80 space-y-2.5 mb-3 shadow-xs">
-        {/* Row 1: Section Dropdown + Target Date in ONE compact row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex-1">
-            <select
-              value={activeTab}
-              onChange={(e) => {
-                const tabId = e.target.value as any;
-                setActiveTab(tabId);
-                if (tabId === 'reports') loadReport();
-                if (tabId === 'closure') loadClosureStatus();
-                if (tabId === 'retention') loadRetentionPreview();
-                if (tabId === 'audit') loadAuditLogs();
-              }}
-              className="w-full bg-[#FAF5EC]/90 border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-[#C86A1B]"
-            >
-              {[
-                { id: 'overview', label: '📖 బుకింగ్స్ & సమీక్ష' },
-                { id: 'schedule', label: '✨ పూజా సంకల్ప పట్టిక' },
-                { id: 'sevas', label: '📚 సేవల జాబితా' },
-                { id: 'staff', label: '👥 సిబ్బంది & అర్చకులు' },
-                { id: 'reports', label: '📄 ఆదాయ నివేదికలు' },
-                { id: 'closure', label: '☑️ రోజు ముగింపు' },
-                { id: 'retention', label: '🛡️ గోప్యత & భద్రత' },
-                { id: 'audit', label: '🔒 ఆడిట్ రికార్డులు' },
-                { id: 'settings', label: '⚙️ ఆలయ అమరికలు & యూపీఐ' }
-              ].map(tab => (
-                <option key={tab.id} value={tab.id}>
-                  {tab.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <input
-              type="date"
-              value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#2D2520]"
-            />
-            <button
-              type="button"
-              onClick={() => setReportDate(getTempleToday())}
-              className="px-2.5 py-1.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
-              title="నేటి తేదీ (Today)"
-            >
-              నేడు
-            </button>
-            <button
-              type="button"
-              onClick={loadOverview}
-              className="p-2 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95"
-              title="తాజా సమాచారం (Refresh)"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              disabled={isBulkCompletingOverview}
-              onClick={handleAdminBatchComplete}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl text-xs font-bold shadow-2xs active:scale-95"
-              title="ఈ తేదీకి సంబంధించిన పూజలను ఒకేసారి పూర్తి చేయండి"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-200" />
-              <span>{isBulkCompletingOverview ? '...' : 'బల్క్ పూర్తి'}</span>
-            </button>
-          </div>
+        {/* Row 1: Full-Width Navigation Section Picker */}
+        <div>
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            విభాగం (Section):
+          </label>
+          <select
+            value={activeTab}
+            onChange={(e) => switchTab(e.target.value as any)}
+            className="w-full bg-[#FAF5EC]/90 border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl py-2 px-3 focus:outline-none focus:ring-1 focus:ring-[#C86A1B] shadow-2xs"
+          >
+            {[
+              { id: 'overview', label: '📖 బుకింగ్స్ & పూజా సమీక్ష' },
+              { id: 'schedule', label: '✨ పూజా సంకల్ప పట్టిక' },
+              { id: 'sevas', label: '📚 సేవల జాబితా' },
+              { id: 'staff', label: '👥 సిబ్బంది & అర్చకులు' },
+              { id: 'reports', label: '📄 ఆదాయ నివేదికలు' },
+              { id: 'closure', label: '☑️ రోజు ముగింపు' },
+              { id: 'retention', label: '🛡️ గోప్యత & భద్రత' },
+              { id: 'audit', label: '🔒 ఆడిట్ రికార్డులు' },
+              { id: 'settings', label: '⚙️ ఆలయ అమరికలు & యూపీఐ' }
+            ].map(tab => (
+              <option key={tab.id} value={tab.id}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Row 2: Search Input & Row 3: Minimalist Filter Pills */}
+        {/* Row 2: Target Date Picker + Quick Actions (Dedicated clean row, ZERO overflow) */}
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={reportDate}
+            onChange={(e) => setReportDate(e.target.value)}
+            className="flex-1 min-w-0 px-2.5 py-2 bg-[#FAF5EC]/90 border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#2D2520] shadow-2xs focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => setReportDate(getTempleToday())}
+            className="px-3 py-2 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-xs sm:text-sm font-bold text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95 shadow-2xs shrink-0"
+            title="నేటి తేదీ (Today)"
+          >
+            నేడు
+          </button>
+          <button
+            type="button"
+            onClick={loadOverview}
+            className="p-2.5 bg-[#FAF5EC] border border-[#E8DCCE] rounded-xl text-[#7A1C23] hover:bg-[#F3ECE0] active:scale-95 shadow-2xs shrink-0"
+            title="తాజా సమాచారం (Refresh)"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Rows for Overview Tab: Search + Filtering */}
         {activeTab === 'overview' && (
           <>
+            {/* Row 3: Search Bar */}
             <div className="relative">
               <input
                 type="text"
@@ -746,18 +818,19 @@ export const AdminDashboardPage: React.FC = () => {
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             </div>
 
+            {/* Row 4: Main Date Category Filters */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-[#E8DCCE]/40">
               {[
                 { id: 'booking_date', label: 'కౌంటర్ బుకింగ్‌లు' },
                 { id: 'scheduled_date', label: 'సంకల్ప దినం' },
                 { id: 'future_only', label: 'ముందస్తు పూజలు' },
-                { id: 'all', label: 'అన్ని రికార్డులు' }
+                { id: 'all', label: 'అన్నీ' }
               ].map(f => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={() => setBookingFilterType(f.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                     bookingFilterType === f.id
                       ? 'bg-[#7A1C23] text-white shadow-2xs'
                       : 'bg-[#FAF5EC] text-gray-700 hover:bg-[#F3ECE0] border border-[#E8DCCE]/70'
@@ -767,6 +840,63 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            {/* Row 5: Sankalpa Status Filters (Pending vs Done) */}
+            <div className="flex items-center gap-1.5 pt-1.5 border-t border-[#E8DCCE]/40">
+              <span className="text-[11px] font-bold text-gray-500 shrink-0">సంకల్పం:</span>
+              <button
+                type="button"
+                onClick={() => setSankalpaFilter('all')}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  sankalpaFilter === 'all'
+                    ? 'bg-[#2D2520] text-white shadow-2xs'
+                    : 'bg-[#FAF5EC] text-gray-700 border border-[#E8DCCE]'
+                }`}
+              >
+                అన్నీ ({sankalpaStats.total})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSankalpaFilter('pending')}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  sankalpaFilter === 'pending'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'bg-amber-50 text-amber-900 border border-amber-300'
+                }`}
+              >
+                ⏳ పెండింగ్ ({sankalpaStats.pending})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSankalpaFilter('completed')}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  sankalpaFilter === 'completed'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                }`}
+              >
+                ✓ పూర్తయినవి ({sankalpaStats.completed})
+              </button>
+            </div>
+
+            {/* Row 6: Dedicated Full-Width Bulk Completion Banner for Mobile */}
+            {sankalpaStats.pending > 0 && (
+              <div className="pt-1.5">
+                <button
+                  type="button"
+                  disabled={isBulkCompletingOverview}
+                  onClick={handleAdminBatchComplete}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:brightness-110 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 border border-amber-300/40"
+                >
+                  <Zap className="w-4 h-4 text-amber-200 animate-pulse" />
+                  <span>
+                    {isBulkCompletingOverview
+                      ? 'నమోదవుతున్నాయి...'
+                      : `⚡ ఈ తేదీ పెండింగ్ పూజలన్నీ పూర్తి చేయండి (${sankalpaStats.pending})`}
+                  </span>
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -862,27 +992,66 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/40">
-              <span className="text-[11px] font-bold text-gray-500 mr-1">ఫిల్టర్:</span>
-              {[
-                { id: 'booking_date', label: `ఈ తేదీన కౌంటర్‌లో బుక్ చేసినవి (${reportDate})` },
-                { id: 'scheduled_date', label: 'ఈ తేదీ పూజలు (సంకల్ప దినం)' },
-                { id: 'future_only', label: 'ముందస్తు పూజా బుకింగ్‌లు' },
-                { id: 'all', label: 'అన్ని రికార్డులు' }
-              ].map(f => (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E8DCCE]/40">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-500 mr-1">తేదీ వర్గం:</span>
+                {[
+                  { id: 'booking_date', label: `ఈ తేదీన కౌంటర్‌లో బుక్ చేసినవి (${reportDate})` },
+                  { id: 'scheduled_date', label: 'ఈ తేదీ పూజలు (సంకల్ప దినం)' },
+                  { id: 'future_only', label: 'ముందస్తు పూజా బుకింగ్‌లు' },
+                  { id: 'all', label: 'అన్ని రికార్డులు' }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setBookingFilterType(f.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
+                      bookingFilterType === f.id
+                        ? 'bg-[#7A1C23] text-white'
+                        : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-500 mr-1">సంకల్ప స్థితి:</span>
                 <button
-                  key={f.id}
                   type="button"
-                  onClick={() => setBookingFilterType(f.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-                    bookingFilterType === f.id
-                      ? 'bg-[#7A1C23] text-white'
-                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  onClick={() => setSankalpaFilter('all')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    sankalpaFilter === 'all'
+                      ? 'bg-[#2D2520] text-white shadow-2xs'
+                      : 'bg-[#FAF5EC] text-gray-700 hover:bg-[#F3ECE0] border border-[#E8DCCE]'
                   }`}
                 >
-                  {f.label}
+                  అన్నీ ({sankalpaStats.total})
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setSankalpaFilter('pending')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    sankalpaFilter === 'pending'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                >
+                  ⏳ పెండింగ్ ({sankalpaStats.pending})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSankalpaFilter('completed')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                    sankalpaFilter === 'completed'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+                  }`}
+                >
+                  ✓ పూర్తయినవి ({sankalpaStats.completed})
+                </button>
+              </div>
             </div>
           </div>
 
@@ -893,81 +1062,119 @@ export const AdminDashboardPage: React.FC = () => {
                 ఎటువంటి బుకింగ్‌లు లభించలేదు.
               </div>
             ) : (
-              filteredBookingsList.map((b: Booking) => (
-                <div key={b.id} className="glass-surface-interactive rounded-2xl p-3.5 sm:p-4 border border-white/85 shadow-xs space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-[#E8DCCE]/50 pb-2">
-                    <div>
-                      <span className="font-mono font-bold text-sm sm:text-base text-[#7A1C23]">{b.booking_number}</span>
-                      <div className="text-xs text-gray-500">
-                        {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
+              filteredBookingsList.map((b: Booking) => {
+                const totalTickets = b.ticket_count || 1;
+                const completedTickets = b.completed_ticket_count || 0;
+                const isSankalpamDone = totalTickets > 0 && completedTickets >= totalTickets;
+                const isPartiallyDone = completedTickets > 0 && !isSankalpamDone;
+                const isCompletingThis = completingBookingId === b.id;
+
+                return (
+                  <div key={b.id} className="glass-surface-interactive rounded-2xl p-3.5 sm:p-4 border border-white/85 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-[#E8DCCE]/50 pb-2">
+                      <div>
+                        <span className="font-mono font-bold text-sm sm:text-base text-[#7A1C23]">{b.booking_number}</span>
+                        <div className="text-xs text-gray-500">
+                          {new Date(b.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' })}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-bold text-[#7A1C23] font-mono">₹{formatCurrency(b.total_amount)}</div>
+                        <span className={`inline-block px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+                          b.payment_status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-800 border border-amber-500/20'
+                        }`}>
+                          {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'} • {b.payment_status === 'confirmed' ? 'స్వీకరించబడింది' : 'పెండింగ్'}
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-base font-bold text-[#7A1C23] font-mono">₹{formatCurrency(b.total_amount)}</div>
-                      <span className={`inline-block px-2.5 py-0.5 rounded-lg text-xs font-bold ${
-                        b.payment_status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-800 border border-amber-500/20'
-                      }`}>
-                        {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'} • {b.payment_status === 'confirmed' ? 'స్వీకరించబడింది' : 'పెండింగ్'}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="text-xs sm:text-sm space-y-1.5">
-                    <div>
-                      <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
-                      <strong className="text-[#2D2520]">{toTeluguText(b.ritual_beneficiary_name)}</strong>
-                      {b.payer_mobile && <span className="text-xs text-gray-500 ml-1.5 font-mono">📱 {b.payer_mobile}</span>}
-                    </div>
-                    <div>
-                      <span className="text-gray-500">గోత్రం:</span>{' '}
-                      <span className="font-bold text-amber-950">{formatTeluguGothram(b.gothra)}</span>
+                    <div className="text-xs sm:text-sm space-y-1.5">
+                      <div>
+                        <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
+                        <strong className="text-[#2D2520]">{toTeluguText(b.ritual_beneficiary_name)}</strong>
+                        {b.payer_mobile && <span className="text-xs text-gray-500 ml-1.5 font-mono">📱 {b.payer_mobile}</span>}
+                      </div>
+                      <div>
+                        <span className="text-gray-500">గోత్రం:</span>{' '}
+                        <span className="font-bold text-amber-950">{formatTeluguGothram(b.gothra)}</span>
+                      </div>
+
+                      {/* Detailed Pooja Items */}
+                      <div className="pt-1.5 border-t border-[#E8DCCE]/40">
+                        <span className="text-gray-600 font-semibold text-xs">సేవలు & నిర్వహణ తేదీలు:</span>
+                        {b.items_summary && b.items_summary.length > 0 ? (
+                          <div className="mt-1 space-y-1">
+                            {b.items_summary.map((item: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between text-xs bg-white/70 p-1.5 rounded-xl border border-white">
+                                <span className="font-bold text-[#7A1C23]">{item.seva_name} ({item.quantity})</span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                  item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                }`}>
+                                  📅 {item.scheduled_date || 'నేటి పూజ'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">{b.ticket_count || 1} సేవా టికెట్లు</div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Detailed Pooja Items */}
-                    <div className="pt-1.5 border-t border-[#E8DCCE]/40">
-                      <span className="text-gray-600 font-semibold text-xs">సేవలు & నిర్వహణ తేదీలు:</span>
-                      {b.items_summary && b.items_summary.length > 0 ? (
-                        <div className="mt-1 space-y-1">
-                          {b.items_summary.map((item: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between text-xs bg-white/70 p-1.5 rounded-xl border border-white">
-                              <span className="font-bold text-[#7A1C23]">{item.seva_name} ({item.quantity})</span>
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                              }`}>
-                                📅 {item.scheduled_date || 'నేటి పూజ'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">{b.ticket_count || 1} సేవా టికెట్లు</div>
-                      )}
-                    </div>
-                  </div>
+                    {/* Sankalpa Status & Actions Row */}
+                    <div className="pt-2 border-t border-[#E8DCCE]/50 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        {b.booking_status === 'cancelled' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            ❌ రద్దయింది
+                          </span>
+                        ) : isSankalpamDone ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            ✓ సంకల్పం పూర్తయింది
+                          </span>
+                        ) : isPartiallyDone ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                            ⏳ పాక్షికంగా పూర్తయింది ({completedTickets}/{totalTickets})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-850 border border-amber-300">
+                            ⏳ సంకల్పం పెండింగ్
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="pt-2 border-t border-[#E8DCCE]/50 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-600">
-                      స్థితి: <strong className={b.booking_status === 'completed' ? 'text-emerald-700' : 'text-rose-700'}>{b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}</strong>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleInspectBooking(b.id)}
-                        className="px-3.5 py-1.5 bg-white/90 border border-white text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl hover:bg-white shadow-2xs active:scale-95 transition-all"
-                      >
-                        టికెట్లు ముద్రించు
-                      </button>
-                      {b.booking_status !== 'cancelled' && (
+                      <div className="flex items-center gap-1.5">
+                        {b.booking_status !== 'cancelled' && !isSankalpamDone && (
+                          <button
+                            type="button"
+                            disabled={isCompletingThis}
+                            onClick={() => handleMarkBookingComplete(b.id)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 border border-amber-300/40"
+                            title="ఈ బుకింగ్ లోని పూజలను పూర్తి చేయండి"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-amber-200" />
+                            <span>{isCompletingThis ? 'నమోదవుతోంది...' : '⚡ పూర్తి చేయండి'}</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => setరద్దుlationBookingId(b.id)}
-                          className="px-2 py-1 text-rose-700 text-xs font-semibold hover:underline"
+                          onClick={() => handleInspectBooking(b.id)}
+                          className="px-3.5 py-1.5 bg-white/90 border border-white text-[#7A1C23] font-bold text-xs sm:text-sm rounded-xl hover:bg-white shadow-2xs active:scale-95 transition-all"
                         >
-                          రద్దు
+                          టికెట్లు ముద్రించు
                         </button>
-                      )}
+                        {b.booking_status !== 'cancelled' && (
+                          <button
+                            onClick={() => setరద్దుlationBookingId(b.id)}
+                            className="px-2 py-1 text-rose-700 text-xs font-semibold hover:underline"
+                          >
+                            రద్దు
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -1040,29 +1247,78 @@ export const AdminDashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          b.booking_status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {b.booking_status === 'completed' ? 'పూర్తయింది' : 'రద్దయింది'}
-                        </span>
+                        {(() => {
+                          const totalTickets = b.ticket_count || 1;
+                          const completedTickets = b.completed_ticket_count || 0;
+                          const isSankalpamDone = totalTickets > 0 && completedTickets >= totalTickets;
+                          const isPartiallyDone = completedTickets > 0 && !isSankalpamDone;
+
+                          if (b.booking_status === 'cancelled') {
+                            return (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                రద్దయింది
+                              </span>
+                            );
+                          }
+                          if (isSankalpamDone) {
+                            return (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                ✓ సంకల్పం పూర్తయింది
+                              </span>
+                            );
+                          }
+                          if (isPartiallyDone) {
+                            return (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                ⏳ పాక్షికం ({completedTickets}/{totalTickets})
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-850 border border-amber-300">
+                              ⏳ సంకల్పం పెండింగ్
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-right space-x-2">
-                        <button
-                          onClick={() => handleInspectBooking(b.id)}
-                          className="text-[#7A1C23] hover:underline font-bold"
-                        >
-                          టికెట్లు
-                        </button>
-                        {b.booking_status !== 'cancelled' && (
-                          <button
-                            onClick={() => setరద్దుlationBookingId(b.id)}
-                            className="text-rose-600 hover:underline font-medium"
-                          >
-                            రద్దు
-                          </button>
-                        )}
+                        {(() => {
+                          const totalTickets = b.ticket_count || 1;
+                          const completedTickets = b.completed_ticket_count || 0;
+                          const isSankalpamDone = totalTickets > 0 && completedTickets >= totalTickets;
+                          const isCompletingThis = completingBookingId === b.id;
+
+                          return (
+                            <>
+                              {b.booking_status !== 'cancelled' && !isSankalpamDone && (
+                                <button
+                                  type="button"
+                                  disabled={isCompletingThis}
+                                  onClick={() => handleMarkBookingComplete(b.id)}
+                                  className="px-2.5 py-1 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white rounded-lg text-[10px] font-bold shadow-2xs transition-all inline-flex items-center gap-1 border border-amber-300/40"
+                                  title="ఈ బుకింగ్ పూజలను పూర్తి చేయండి"
+                                >
+                                  <Zap className="w-3 h-3 text-amber-200" />
+                                  <span>{isCompletingThis ? '...' : 'పూర్తి చేయండి'}</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleInspectBooking(b.id)}
+                                className="text-[#7A1C23] hover:underline font-bold"
+                              >
+                                టికెట్లు ముద్రించు
+                              </button>
+                              {b.booking_status !== 'cancelled' && (
+                                <button
+                                  onClick={() => setరద్దుlationBookingId(b.id)}
+                                  className="text-rose-600 hover:underline font-medium"
+                                >
+                                  రద్దు
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
