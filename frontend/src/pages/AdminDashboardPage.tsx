@@ -11,7 +11,7 @@ import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
   Lock, RefreshCw, FileText, Settings, History, CheckSquare,
-  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles
+  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -86,6 +86,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [newPasswordValue, setNewPasswordValue] = useState('');
   const [passwordStatusMsg, setPasswordStatusMsg] = useState<string | null>(null);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [showNewUserPass, setShowNewUserPass] = useState(false);
+  const [showResetPass, setShowResetPass] = useState(false);
 
   // Reports
   const [reportStart, setReportStart] = useState(getTempleToday());
@@ -998,13 +1000,31 @@ export const AdminDashboardPage: React.FC = () => {
               <h2 className="text-base font-bold text-[#7A1C23]">ఆలయ పూజా సేవల జాబితా</h2>
               <p className="text-xs text-gray-500">ధరలు, విభాగాలు, నిర్వహణ సమయాలు మరియు అర్చకుల కేటాయింపులు.</p>
             </div>
-            <button
-              onClick={() => setIsCreatingSeva(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-md text-xs font-semibold shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              నూతన సేవను చేర్చండి
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await apiRequest('/sevas/seed-defaults', { method: 'POST' });
+                    await loadSevas();
+                    alert('ఆలయ సేవల జాబితా విజయవంతంగా సీడ్ చేయబడింది!');
+                  } catch (err: any) {
+                    alert(err.message || 'సీడింగ్ విఫలమైంది');
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] hover:bg-[#F3ECE0] border border-[#E8DCCE] text-[#7A1C23] rounded-lg text-xs font-bold shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                అన్ని పూజలను సీడ్ చేయండి (Restore Sevas)
+              </button>
+              <button
+                onClick={() => setIsCreatingSeva(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg text-xs font-semibold shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                నూతన సేవను చేర్చండి
+              </button>
+            </div>
           </div>
 
           {/* New Seva Form Modal */}
@@ -1455,14 +1475,23 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-semibold mb-1">Password *</label>
-                  <input
-                    type="password"
-                    required
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded bg-[#FAF5EC]/40"
-                    placeholder="Minimum 6 characters"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewUserPass ? 'text' : 'password'}
+                      required
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="w-full px-3 pr-8 py-1.5 border rounded bg-[#FAF5EC]/40"
+                      placeholder="Minimum 6 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewUserPass(!showNewUserPass)}
+                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewUserPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
                   <button
@@ -1567,15 +1596,24 @@ export const AdminDashboardPage: React.FC = () => {
                     <label className="block text-xs font-bold text-[#7A1C23] mb-1 font-serif">
                       నూతన రహస్య సంకేతం (New Password)
                     </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={newPasswordValue}
-                      onChange={(e) => setNewPasswordValue(e.target.value)}
-                      placeholder="కనీసం 6 అక్షరాలు"
-                      className="w-full px-3 py-2 text-xs bg-[#FAF5EC]/70 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showResetPass ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        value={newPasswordValue}
+                        onChange={(e) => setNewPasswordValue(e.target.value)}
+                        placeholder="కనీసం 6 అక్షరాలు"
+                        className="w-full pl-3 pr-8 py-2 text-xs bg-[#FAF5EC]/70 border border-[#E8DCCE] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowResetPass(!showResetPass)}
+                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showResetPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 pt-2">

@@ -4,8 +4,18 @@ import { z } from 'zod';
 import { SevaService } from '../modules/sevas/seva.service.js';
 import { requireRole } from '../middleware/auth.js';
 import { AuditService } from '../modules/audit/audit.service.js';
+import { getDb } from '../db/index.js';
+import { seedInitialData } from '../db/seed.js';
 
 export async function sevaRoutes(fastify: FastifyInstance) {
+  // Seed / Restore All Standard Sevas (Admin or auto-sync)
+  fastify.post('/seed-defaults', { preHandler: [requireRole(['admin', 'booking_staff', 'poojari'])] }, async () => {
+    const db = await getDb();
+    await seedInitialData(db);
+    const sevas = await SevaService.listAll({ onlyActive: true });
+    return { success: true, count: sevas.length, sevas };
+  });
+
   // List Sevas for Booking / Dashboard
   fastify.get('/', { preHandler: [requireRole(['admin', 'booking_staff', 'poojari'])] }, async (request, reply) => {
     const user = request.user!;

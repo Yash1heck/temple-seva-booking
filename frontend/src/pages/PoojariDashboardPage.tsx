@@ -22,9 +22,20 @@ export const PoojariDashboardPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await apiRequest<{ date: string; rituals: PoojaFolderItem[] }>(
+      let data = await apiRequest<{ date: string; rituals: PoojaFolderItem[] }>(
         `/poojari/dashboard?date=${selectedDate}&board=true`
       );
+      // Auto-heal / seed sevas if only 1 or 0 sevas exist in database
+      if (!data?.rituals || data.rituals.length <= 1) {
+        try {
+          await apiRequest('/sevas/seed-defaults', { method: 'POST' });
+          data = await apiRequest<{ date: string; rituals: PoojaFolderItem[] }>(
+            `/poojari/dashboard?date=${selectedDate}&board=true`
+          );
+        } catch {
+          // Continue
+        }
+      }
       setRituals(data.rituals);
     } catch (err: any) {
       setError(err.message || 'Failed to load ritual queue.');

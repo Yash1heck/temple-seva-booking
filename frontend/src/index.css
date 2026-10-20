@@ -74,22 +74,28 @@
 
 /* Printing Styles (Thermal 80mm Tickets & A4 Sankalpa Sheets) */
 @media print {
+  /* Completely hide the application root & modals from the print layout flow so they take ZERO pages */
+  #root, .print\:hidden, nav, header {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   html, body {
     background: #FFFFFF !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  body * {
-    visibility: hidden;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   #thermal-print-container,
   #thermal-print-container *,
   #sankalpa-print-container,
   #sankalpa-print-container * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
   #thermal-print-container {
@@ -129,6 +135,13 @@
     background: #FFFFFF !important;
     border-bottom: 2px dashed #000000 !important;
     box-sizing: border-box !important;
+  }
+
+  /* The last ticket slip should never have a trailing blank page */
+  .ticket-thermal-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+    border-bottom: none !important;
   }
 }
 

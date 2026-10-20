@@ -194,29 +194,38 @@ export async function seedInitialData(db: IDatabaseClient): Promise<void> {
     }
   ];
 
+  const allPoojarisRes = await db.query(`SELECT id FROM staff_users WHERE role = 'poojari'`);
+  const poojariList = allPoojarisRes.rows;
+
   for (const s of sevas) {
-    let sevaRes = await db.query(`SELECT id FROM sevas WHERE name = $1 LIMIT 1`, [s.name]);
+    let sevaRes = await db.query(`SELECT id FROM sevas WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1`, [s.name]);
     let sevaId = sevaRes.rows[0]?.id;
 
     if (!sevaId) {
-      const ins = await db.query(
-        `INSERT INTO sevas (name, telugu_name, description, category, price, is_active, is_scheduled, scheduled_date, timing)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id`,
-        [s.name, s.telugu_name, s.description, s.category, s.price, s.is_active, s.is_scheduled, s.scheduled_date, s.timing]
-      );
-      sevaId = ins.rows[0]?.id;
+      try {
+        const ins = await db.query(
+          `INSERT INTO sevas (name, telugu_name, description, category, price, is_active, is_scheduled, scheduled_date, timing)
+           VALUES ($1, $2, $3, $4, $5::numeric, $6::boolean, $7::boolean, $8::date, $9)
+           RETURNING id`,
+          [s.name, s.telugu_name, s.description, s.category, s.price, s.is_active, s.is_scheduled, s.scheduled_date, s.timing]
+        );
+        sevaId = ins.rows[0]?.id;
+      } catch (err: any) {
+        console.error(`Error inserting seva '${s.name}':`, err.message);
+      }
     }
 
-    if (sevaId && poojariId) {
-      await db.query(
-        `INSERT INTO poojari_assignments (seva_id, poojari_id, is_primary)
-         SELECT $1, $2, true
-         WHERE NOT EXISTS (
-           SELECT 1 FROM poojari_assignments WHERE seva_id = $1 AND poojari_id = $2
-         )`,
-        [sevaId, poojariId]
-      );
+    if (sevaId) {
+      for (const p of poojariList) {
+        await db.query(
+          `INSERT INTO poojari_assignments (seva_id, poojari_id, is_primary)
+           SELECT $1, $2, true
+           WHERE NOT EXISTS (
+             SELECT 1 FROM poojari_assignments WHERE seva_id = $1 AND poojari_id = $2
+           )`,
+          [sevaId, p.id]
+        );
+      }
     }
   }
 

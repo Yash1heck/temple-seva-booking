@@ -49,10 +49,23 @@ export const BookingCounterPage: React.FC = () => {
   const loadData = async () => {
     setIsLoadingSevas(true);
     try {
-      const [sevasList, settings] = await Promise.all([
+      let [sevasList, settings] = await Promise.all([
         apiRequest<Seva[]>('/sevas'),
         apiRequest<any>('/settings').catch(() => null)
       ]);
+
+      // If database has 1 or fewer sevas, automatically trigger seed-defaults
+      if (!sevasList || sevasList.length <= 1) {
+        try {
+          const seeded = await apiRequest<{ success: boolean; sevas: Seva[] }>('/sevas/seed-defaults', { method: 'POST' });
+          if (seeded?.sevas && seeded.sevas.length > (sevasList?.length || 0)) {
+            sevasList = seeded.sevas;
+          }
+        } catch {
+          // Continue with existing sevasList
+        }
+      }
+
       setSevas(sevasList);
       if (settings?.upi_config) {
         setTempleUpiConfig(settings.upi_config);
