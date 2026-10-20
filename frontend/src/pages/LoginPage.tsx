@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { Lock, User as UserIcon, AlertCircle, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { playTempleBell } from '../utils/templeAudio.js';
@@ -169,6 +169,18 @@ export const LoginPage: React.FC = () => {
               </span>
             )}
           </button>
+
+          {/* Public Devotee Seva Self-Service Link */}
+          <div className="mt-4 pt-3 border-t border-[#E8DCCE]/60 text-center">
+            <span className="text-[11px] text-gray-500 block mb-1.5">భక్తులు స్వయంగా పూజను నమోదు చేసుకోదలచారా?</span>
+            <Link
+              to="/devotee-booking"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FAF5EC] hover:bg-[#F3ECE0] border border-[#E8DCCE] text-[#7A1C23] font-bold text-xs rounded-xl transition-all shadow-2xs"
+            >
+              <span>🙏 భక్తుల స్వయంసేవ పూజా పోర్టల్</span>
+              <span>→</span>
+            </Link>
+          </div>
         </form>
 
         {/* Sacred Traditional Benediction */}

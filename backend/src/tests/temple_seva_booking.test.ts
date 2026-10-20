@@ -650,4 +650,104 @@ describe('Temple Seva Booking System - V1 Complete Test Suite', () => {
     expect(foundInPoojariTomorrow).toBeDefined();
     expect(foundInPoojariTomorrow?.seva_name).toBe('Test Special Pournami');
   });
+
+  // =========================================================================
+  // FEATURE 31: POOJA COMPLETION STAMPING
+  // =========================================================================
+  it('Feature 31: Poojari marks ticket as completed -> ticket status updates to completed and records timestamp', async () => {
+    // Create a booking
+    const bookingResult = await BookingService.createBooking({
+      ritual_beneficiary_name: 'Suresh Kumar',
+      gothra: 'Bharadwaja',
+      payer_mobile: '9848011223',
+      items: [{ seva_id: archanaSeva.id, quantity: 1 }],
+      payment: { method: 'cash', status: 'confirmed' },
+      created_by_id: staffUser.id
+    }, testDb);
+
+    const ticketNumber = bookingResult.tickets[0].ticket_number;
+
+    // Call complete ticket endpoint as poojariA
+    const res = await app.inject({
+      method: 'POST',
+      url: '/poojari/complete-ticket',
+      headers: { authorization: `Bearer ${poojariAToken}` },
+      payload: { ticket_number: ticketNumber }
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.status).toBe('completed');
+    expect(body.completed_at).toBeDefined();
+    expect(body.completed_by_name).toBe('Sri Sharma Poojari');
+
+    // Verify TicketService returns completion details
+    const ticketDetails = await TicketService.findByNumber(ticketNumber, testDb);
+    expect(ticketDetails?.status).toBe('completed');
+    expect(ticketDetails?.completed_at).toBeDefined();
+    expect(ticketDetails?.completed_by_name).toBe('Sri Sharma Poojari');
+  });
+
+  // =========================================================================
+  // FEATURE 32: DEVOTEE SELF-SERVICE REQUEST & STAFF APPROVAL
+  // =========================================================================
+  it('Feature 32: Devotee submits self-service booking request and staff approves it', async () => {
+    // 1. Devotee submits public request
+    const devRes = await app.inject({
+      method: 'POST',
+      url: '/devotee-requests',
+      payload: {
+        devotee_name: 'Ananya Sharma',
+        gothra: 'Kashyapa',
+        mobile: '9988776655',
+        family_details: 'Ramesh, Priya',
+        items: [{
+          seva_id: archanaSeva.id,
+          seva_name: 'Test Archana',
+          seva_price: 50.00,
+          quantity: 1
+        }]
+      }
+    });
+
+    expect(devRes.statusCode).toBe(201);
+    const devBody = JSON.parse(devRes.body);
+    expect(devBody.request_number).toMatch(/^REQ-\d+/);
+    expect(devBody.status).toBe('pending');
+    expect(devBody.total_amount).toBe(50);
+
+    // 2. Staff views pending requests
+    const pendingRes = await app.inject({
+      method: 'GET',
+      url: '/devotee-requests/pending?mobile=9988776655',
+      headers: { authorization: `Bearer ${staffToken}` }
+    });
+    expect(pendingRes.statusCode).toBe(200);
+    const pendingList = JSON.parse(pendingRes.body);
+    expect(pendingList.length).toBeGreaterThanOrEqual(1);
+    expect(pendingList[0].request_number).toBe(devBody.request_number);
+
+    // 3. Staff checks out and marks request approved
+    const createdBooking = await BookingService.createBooking({
+      ritual_beneficiary_name: devBody.devotee_name,
+      gothra: devBody.gothra,
+      payer_mobile: devBody.mobile,
+      family_details: devBody.family_details,
+      items: [{ seva_id: archanaSeva.id, quantity: 1 }],
+      payment: { method: 'cash', status: 'confirmed' },
+      created_by_id: staffUser.id
+    }, testDb);
+
+    const approveRes = await app.inject({
+      method: 'PATCH',
+      url: `/devotee-requests/${devBody.id}/approve`,
+      headers: { authorization: `Bearer ${staffToken}` },
+      payload: { booking_id: createdBooking.booking.id }
+    });
+
+    expect(approveRes.statusCode).toBe(200);
+    const approveBody = JSON.parse(approveRes.body);
+    expect(approveBody.status).toBe('approved');
+    expect(approveBody.approved_booking_id).toBe(createdBooking.booking.id);
+  });
 });

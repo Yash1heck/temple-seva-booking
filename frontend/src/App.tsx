@@ -7,6 +7,7 @@ import { BookingCounterPage } from './pages/BookingCounterPage.js';
 import { BookedSevasPage } from './pages/BookedSevasPage.js';
 import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { PoojariDashboardPage } from './pages/PoojariDashboardPage.js';
+import { DevoteeBookingPage } from './pages/DevoteeBookingPage.js';
 import { playTempleBell } from './utils/templeAudio.js';
 
 const ProtectedRoute: React.FC<{
@@ -80,6 +81,8 @@ export const App: React.FC = () => {
           <main className="flex-1 pb-20 md:pb-6">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/devotee-booking" element={<DevoteeBookingPage />} />
+              <Route path="/book-seva" element={<DevoteeBookingPage />} />
               <Route
                 path="/counter"
                 element={

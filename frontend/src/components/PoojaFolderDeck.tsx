@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { apiRequest } from '../api/client.js';
 import { Sparkles, CheckCircle2, ArrowLeft, RotateCcw, List, Layers, Users, Calendar, Printer } from 'lucide-react';
 import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
@@ -64,6 +65,21 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     }
   });
 
+  // Sync server completion status into completedMap whenever rituals change
+  useEffect(() => {
+    setCompletedMap(prev => {
+      const next = { ...prev };
+      rituals.forEach(r => {
+        r.registrations.forEach(reg => {
+          if (reg.status === 'completed' || !!(reg as any).completed_at) {
+            next[reg.ticket_number] = true;
+          }
+        });
+      });
+      return next;
+    });
+  }, [rituals]);
+
   useEffect(() => {
     try {
       localStorage.setItem(`temple_completed_tickets_${selectedDate}`, JSON.stringify(completedMap));
@@ -75,7 +91,15 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`temple_completed_tickets_${selectedDate}`);
-      setCompletedMap(saved ? JSON.parse(saved) : {});
+      const map = saved ? JSON.parse(saved) : {};
+      rituals.forEach(r => {
+        r.registrations.forEach(reg => {
+          if (reg.status === 'completed' || !!(reg as any).completed_at) {
+            map[reg.ticket_number] = true;
+          }
+        });
+      });
+      setCompletedMap(map);
       setActiveFolderId(null);
       setCurrentCardIndex(0);
       setDragOffset({ x: 0, y: 0 });
@@ -92,9 +116,19 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
     }));
   };
 
-  const markTicketCompleted = (ticketNumber: string) => {
+  const markTicketCompleted = async (ticketNumber: string) => {
     setCompletedMap(prev => ({ ...prev, [ticketNumber]: true }));
     playTempleBell(0.3);
+
+    // Persist completion to PostgreSQL database immediately
+    try {
+      await apiRequest('/poojari/complete-ticket', {
+        method: 'POST',
+        body: JSON.stringify({ ticket_number: ticketNumber })
+      });
+    } catch (err) {
+      console.error('Failed to mark ticket completed on server:', err);
+    }
   };
 
   const activeFolder = useMemo(() => {

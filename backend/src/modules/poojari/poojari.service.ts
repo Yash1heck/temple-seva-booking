@@ -17,6 +17,8 @@ export interface PoojariAssignmentSummary {
     family_details: string | null;
     booking_date: string;
     status: string;
+    completed_at?: string | null;
+    completed_by_name?: string | null;
   }[];
 }
 
@@ -86,12 +88,14 @@ export class PoojariService {
       // NOTICE: We specifically DO NOT SELECT amount, payment_method, or payment_status!
       const ticketRes = await db.query(
         `SELECT t.ticket_number, b.booking_number, t.ritual_beneficiary_name, t.gothra,
-                t.family_details, t.created_at::text as booking_date, t.status
+                t.family_details, t.created_at::text as booking_date, t.status,
+                t.completed_at::text as completed_at, u.name as completed_by_name
          FROM tickets t
          JOIN booking_items bi ON t.booking_item_id = bi.id
          JOIN bookings b ON t.booking_id = b.id
+         LEFT JOIN staff_users u ON t.completed_by = u.id
          WHERE bi.seva_id = $1
-           AND t.status = 'issued'
+           AND t.status IN ('issued', 'completed')
            AND b.booking_status != 'cancelled'
            AND (
              (bi.scheduled_date_snapshot IS NOT NULL AND bi.scheduled_date_snapshot = $2::date)
@@ -115,6 +119,60 @@ export class PoojariService {
     }
 
     return summaries;
+  }
+
+  /**
+   * Marks a ticket as completed by a Poojari when swiped or completed at the sanctum.
+   */
+  static async markTicketCompleted(
+    ticketNumber: string,
+    poojariId: string,
+    client?: IDatabaseClient
+  ): Promise<any> {
+    const db = client || await getDb();
+    const cleanNumber = ticketNumber.trim();
+
+    const existingRes = await db.query(
+      `SELECT t.*, b.booking_number FROM tickets t JOIN bookings b ON t.booking_id = b.id WHERE t.ticket_number = $1`,
+      [cleanNumber]
+    );
+
+    if (existingRes.rows.length === 0) {
+      throw new Error('Ticket not found');
+    }
+
+    const res = await db.query(
+      `UPDATE tickets
+       SET status = 'completed',
+           completed_at = NOW(),
+           completed_by = $2
+       WHERE ticket_number = $1
+       RETURNING id, ticket_number, booking_id, status, completed_at, completed_by`,
+      [cleanNumber, poojariId]
+    );
+
+    // Audit log
+    await db.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, details)
+       VALUES ($1, 'POOJA_COMPLETED_BY_POOJARI', 'ticket', $2, $3)`,
+      [
+        poojariId,
+        res.rows[0].id,
+        JSON.stringify({
+          ticket_number: cleanNumber,
+          booking_id: res.rows[0].booking_id,
+          completed_at: res.rows[0].completed_at
+        })
+      ]
+    );
+
+    // Get poojari name
+    const uRes = await db.query(`SELECT name FROM staff_users WHERE id = $1`, [poojariId]);
+
+    return {
+      ...res.rows[0],
+      completed_by_name: uRes.rows[0]?.name || null
+    };
   }
 }
 

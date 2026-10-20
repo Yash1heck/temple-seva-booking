@@ -306,7 +306,14 @@ export class BookingService {
     const booking = bRes.rows[0];
 
     const iRes = await db.query(`SELECT * FROM booking_items WHERE booking_id = $1 ORDER BY created_at ASC`, [bookingId]);
-    const tRes = await db.query(`SELECT * FROM tickets WHERE booking_id = $1 ORDER BY item_index ASC`, [bookingId]);
+    const tRes = await db.query(
+      `SELECT t.*, u.name as completed_by_name
+       FROM tickets t
+       LEFT JOIN staff_users u ON t.completed_by = u.id
+       WHERE t.booking_id = $1
+       ORDER BY t.item_index ASC`,
+      [bookingId]
+    );
     const pRes = await db.query(`SELECT * FROM payments WHERE booking_id = $1 ORDER BY created_at DESC LIMIT 1`, [bookingId]);
 
     booking.total_amount = parseFloat(booking.total_amount) || 0;
@@ -342,6 +349,7 @@ export class BookingService {
       SELECT b.*,
              p.payment_method, p.payment_status, p.transaction_reference,
              (SELECT COUNT(*)::int FROM tickets t WHERE t.booking_id = b.id) as ticket_count,
+             (SELECT COUNT(*)::int FROM tickets t WHERE t.booking_id = b.id AND t.status = 'completed') as completed_ticket_count,
              (
                SELECT json_agg(json_build_object(
                  'seva_name', bi.seva_name_snapshot,
@@ -423,7 +431,10 @@ export class BookingService {
         b.booking_number ILIKE $${params.length} OR
         b.ritual_beneficiary_name ILIKE $${params.length} OR
         b.payer_mobile ILIKE $${params.length} OR
-        b.gothra ILIKE $${params.length}
+        b.gothra ILIKE $${params.length} OR
+        EXISTS (
+          SELECT 1 FROM tickets tk WHERE tk.booking_id = b.id AND tk.ticket_number ILIKE $${params.length}
+        )
       )`);
     }
 

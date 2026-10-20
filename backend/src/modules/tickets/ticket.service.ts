@@ -12,6 +12,9 @@ export interface TicketDetails {
   family_details: string | null;
   amount: number;
   status: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  completed_by_name: string | null;
   reprint_count: number;
   last_reprinted_at: string | null;
   created_at: string;
@@ -23,10 +26,12 @@ export class TicketService {
   static async findByNumber(ticketNumber: string, client?: IDatabaseClient): Promise<TicketDetails | null> {
     const db = client || await getDb();
     const res = await db.query(
-      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status
+      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status,
+              u.name as completed_by_name
        FROM tickets t
        JOIN bookings b ON t.booking_id = b.id
        LEFT JOIN payments p ON p.booking_id = b.id
+       LEFT JOIN staff_users u ON t.completed_by = u.id
        WHERE t.ticket_number = $1`,
       [ticketNumber.trim()]
     );
@@ -41,10 +46,12 @@ export class TicketService {
   static async findById(id: string, client?: IDatabaseClient): Promise<TicketDetails | null> {
     const db = client || await getDb();
     const res = await db.query(
-      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status
+      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status,
+              u.name as completed_by_name
        FROM tickets t
        JOIN bookings b ON t.booking_id = b.id
        LEFT JOIN payments p ON p.booking_id = b.id
+       LEFT JOIN staff_users u ON t.completed_by = u.id
        WHERE t.id = $1`,
       [id]
     );
@@ -59,10 +66,12 @@ export class TicketService {
   static async listByBookingId(bookingId: string, client?: IDatabaseClient): Promise<TicketDetails[]> {
     const db = client || await getDb();
     const res = await db.query(
-      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status
+      `SELECT t.*, b.booking_number, p.payment_method, p.payment_status,
+              u.name as completed_by_name
        FROM tickets t
        JOIN bookings b ON t.booking_id = b.id
        LEFT JOIN payments p ON p.booking_id = b.id
+       LEFT JOIN staff_users u ON t.completed_by = u.id
        WHERE t.booking_id = $1
        ORDER BY t.item_index ASC`,
       [bookingId]

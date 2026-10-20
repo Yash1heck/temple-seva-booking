@@ -14,6 +14,7 @@ import { dailyClosureRoutes } from './routes/daily-closure.routes.js';
 import { retentionRoutes } from './routes/retention.routes.js';
 import { auditRoutes } from './routes/audit.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
+import { devoteeRequestRoutes } from './routes/devotee-request.routes.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -99,6 +100,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(auditRoutes, { prefix: '/audit-logs' });
   await app.register(settingsRoutes, { prefix: '/api/settings' });
   await app.register(settingsRoutes, { prefix: '/settings' });
+  await app.register(devoteeRequestRoutes, { prefix: '/api/devotee-requests' });
+  await app.register(devoteeRequestRoutes, { prefix: '/devotee-requests' });
 
   return app;
 }

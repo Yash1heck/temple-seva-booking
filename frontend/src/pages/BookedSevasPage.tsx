@@ -18,6 +18,7 @@ export const BookedSevasPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>(getTempleToday());
   const [filterMode, setFilterMode] = useState<'booking_date' | 'scheduled_date' | 'future_only' | 'all'>('booking_date');
+  const [ritualStatusFilter, setRitualStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [isLoading, setIsLoading] = useState(true);
 
   // Ticket Modal State
@@ -60,10 +61,11 @@ export const BookedSevasPage: React.FC = () => {
     }
   };
 
-  // Strict ritual date isolation: hide sevas belonging to other dates when viewing a specific ritual day
+  // Strict ritual date isolation and completion status filtering
   const filteredBookingsList = useMemo<Booking[]>(() => {
+    let list = bookings;
     if (filterMode === 'scheduled_date' && selectedDate) {
-      return (bookings as Booking[]).map(b => {
+      list = (list as Booking[]).map(b => {
         const relevantItems = (b.items_summary || []).filter((item: any) =>
           item.scheduled_date === selectedDate || (!item.scheduled_date && selectedDate === getTempleToday())
         );
@@ -73,8 +75,15 @@ export const BookedSevasPage: React.FC = () => {
         };
       }).filter(b => b.items_summary.length > 0);
     }
-    return bookings;
-  }, [bookings, filterMode, selectedDate]);
+
+    if (ritualStatusFilter === 'completed') {
+      list = list.filter(b => (b.completed_ticket_count || 0) > 0 && b.completed_ticket_count === b.ticket_count);
+    } else if (ritualStatusFilter === 'pending') {
+      list = list.filter(b => (b.completed_ticket_count || 0) < (b.ticket_count || 1));
+    }
+
+    return list;
+  }, [bookings, filterMode, selectedDate, ritualStatusFilter]);
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-32 lg:pb-12">
@@ -154,11 +163,11 @@ export const BookedSevasPage: React.FC = () => {
               <div className="sm:col-span-6 relative">
                 <input
                   type="text"
-                  placeholder="బుకింగ్ నంబర్, సంకల్ప కర్త, మొబైల్, గోత్రం ద్వారా వెతకండి..."
+                  placeholder="📱 భక్తుని మొబైల్ సంఖ్య (ఉదా: 9848012345) లేదా టికెట్ / పేరు..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && loadBookings()}
-                  className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/40 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520]"
+                  className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/40 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-medium"
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
               </div>
@@ -190,53 +199,93 @@ export const BookedSevasPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Clean Filter Pills without numbers */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#E8DCCE]/60">
-              <span className="text-[11px] font-bold text-gray-500 mr-1">ఫిల్టర్:</span>
-              <button
-                type="button"
-                onClick={() => setFilterMode('booking_date')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  filterMode === 'booking_date'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                ఈ తేదీన కౌంటర్‌లో బుక్ చేసినవి ({selectedDate})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('scheduled_date')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  filterMode === 'scheduled_date'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                ఈ తేదీన నిర్వహించాల్సిన పూజలు (సంకల్ప దినం)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('future_only')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  filterMode === 'future_only'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                ముందస్తు బుకింగ్‌లు (భవిష్యత్ తేదీలు)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  filterMode === 'all'
-                    ? 'bg-[#7A1C23] text-white shadow-xs'
-                    : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
-                }`}
-              >
-                అన్ని రికార్డులు
-              </button>
+            {/* Clean Filter Pills & Ritual Completion Status */}
+            <div className="space-y-2 pt-2 border-t border-[#E8DCCE]/60">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-500 mr-1">తేదీ ఫిల్టర్:</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('booking_date')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    filterMode === 'booking_date'
+                      ? 'bg-[#7A1C23] text-white shadow-xs'
+                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  }`}
+                >
+                  కౌంటర్ తేదీ ({selectedDate})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('scheduled_date')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    filterMode === 'scheduled_date'
+                      ? 'bg-[#7A1C23] text-white shadow-xs'
+                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  }`}
+                >
+                  సంకల్ప దినం
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('future_only')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    filterMode === 'future_only'
+                      ? 'bg-[#7A1C23] text-white shadow-xs'
+                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  }`}
+                >
+                  ముందస్తు బుకింగ్‌లు
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode('all')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    filterMode === 'all'
+                      ? 'bg-[#7A1C23] text-white shadow-xs'
+                      : 'bg-[#FAF5EC] text-[#7A1C23] hover:bg-[#F3ECE0] border border-[#E8DCCE]'
+                  }`}
+                >
+                  అన్ని రికార్డులు
+                </button>
+              </div>
+
+              {/* Ritual Completion Status Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-500 mr-1">పూజా స్థితి:</span>
+                <button
+                  type="button"
+                  onClick={() => setRitualStatusFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    ritualStatusFilter === 'all'
+                      ? 'bg-[#C86A1B] text-white shadow-xs'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-[#E8DCCE]'
+                  }`}
+                >
+                  అన్ని పూజలు
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRitualStatusFilter('pending')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    ritualStatusFilter === 'pending'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                >
+                  ⏳ నిర్వహించవలసినవి (Pending)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRitualStatusFilter('completed')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    ritualStatusFilter === 'completed'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300'
+                  }`}
+                >
+                  ★ నిర్వహించినవి (Completed)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -262,10 +311,17 @@ export const BookedSevasPage: React.FC = () => {
                   >
                     <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-2">
                       <div>
-                        <span className="font-mono font-bold text-sm text-[#7A1C23]">
-                          {b.booking_number}
-                        </span>
-                        <div className="text-[10px] text-gray-500">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-sm text-[#7A1C23]">
+                            {b.booking_number}
+                          </span>
+                          {b.payer_mobile && (
+                            <span className="font-mono text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                              📱 {b.payer_mobile}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
                           {formatTempleDateTime(b.created_at)}
                         </div>
                       </div>
@@ -273,9 +329,26 @@ export const BookedSevasPage: React.FC = () => {
                         <div className="text-sm font-bold text-[#7A1C23]">
                           ₹{formatCurrency(b.total_amount)}
                         </div>
-                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                          {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'}
-                        </span>
+                        <div className="flex items-center gap-1 justify-end mt-0.5">
+                          <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            {b.payment_method === 'cash' ? 'నగదు' : 'యూపీఐ'}
+                          </span>
+                          {b.completed_ticket_count !== undefined && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                              b.completed_ticket_count >= (b.ticket_count || 1)
+                                ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                : b.completed_ticket_count > 0
+                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                : 'bg-gray-100 text-gray-700 border-gray-300'
+                            }`}>
+                              {b.completed_ticket_count >= (b.ticket_count || 1)
+                                ? '★ నిర్వహించబడింది'
+                                : b.completed_ticket_count > 0
+                                ? `పాక్షికం (${b.completed_ticket_count}/${b.ticket_count})`
+                                : 'పెండింగ్'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -340,12 +413,13 @@ export const BookedSevasPage: React.FC = () => {
                     <thead className="bg-[#FAF5EC] text-gray-700 font-bold border-b border-[#E8DCCE]">
                       <tr>
                         <th className="py-3 px-4">బుకింగ్ సంఖ్య</th>
+                        <th className="py-3 px-4">మొబైల్ సంఖ్య</th>
                         <th className="py-3 px-4">కౌంటర్ సమయం</th>
                         <th className="py-3 px-4">పూజా నిర్వహణ తేదీ</th>
                         <th className="py-3 px-4">సంకల్ప కర్త</th>
                         <th className="py-3 px-4">గోత్రం</th>
-                        <th className="py-3 px-4">కుటుంబ వివరాలు</th>
                         <th className="py-3 px-4">మొత్తం రుసుము</th>
+                        <th className="py-3 px-4">పూజా స్థితి</th>
                         <th className="py-3 px-4">చెల్లింపు</th>
                         <th className="py-3 px-4 text-right">చర్యలు</th>
                       </tr>
@@ -359,6 +433,15 @@ export const BookedSevasPage: React.FC = () => {
                               {b.ticket_count || 1} టికెట్లు
                             </div>
                           </td>
+                          <td className="py-3 px-4 font-mono font-bold text-[#7A1C23]">
+                            {b.payer_mobile ? (
+                              <span className="bg-amber-50 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                                📱 {b.payer_mobile}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4 text-gray-600">
                             {formatTempleDateTime(b.created_at)}
                           </td>
@@ -366,15 +449,15 @@ export const BookedSevasPage: React.FC = () => {
                             {b.items_summary && b.items_summary.length > 0 ? (
                               <div className="space-y-1">
                                 {b.items_summary.map((item: any, i: number) => (
-                                  <div key={i} className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-bold text-[#7A1C23] text-xs">{item.seva_name}:</span>
-                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                                      item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                    }`}>
-                                      📅 {item.scheduled_date || 'నేటి పూజ'}
-                                    </span>
-                                  </div>
-                                ))}
+                                   <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                                     <span className="font-bold text-[#7A1C23] text-xs">{item.seva_name}:</span>
+                                     <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                       item.scheduled_date ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                     }`}>
+                                       📅 {item.scheduled_date || 'నేటి పూజ'}
+                                     </span>
+                                   </div>
+                                 ))}
                               </div>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -388,11 +471,25 @@ export const BookedSevasPage: React.FC = () => {
                           <td className="py-3 px-4 font-medium text-amber-950">
                             {formatTeluguGothram(b.gothra)}
                           </td>
-                          <td className="py-3 px-4 text-gray-600 max-w-xs truncate">
-                            {toTeluguText(b.family_details) || '—'}
-                          </td>
                           <td className="py-3 px-4 font-bold text-[#7A1C23]">
                             ₹{formatCurrency(b.total_amount)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {b.completed_ticket_count !== undefined && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                b.completed_ticket_count >= (b.ticket_count || 1)
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  : b.completed_ticket_count > 0
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-gray-100 text-gray-700 border-gray-300'
+                              }`}>
+                                {b.completed_ticket_count >= (b.ticket_count || 1)
+                                  ? '★ నిర్వహించబడింది'
+                                  : b.completed_ticket_count > 0
+                                  ? `పాక్షికం (${b.completed_ticket_count}/${b.ticket_count})`
+                                  : 'పెండింగ్'}
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">

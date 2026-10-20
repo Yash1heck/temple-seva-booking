@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Seva, CartItem, Ticket, Devotee } from '../types.js';
+import { Seva, CartItem, Ticket, Devotee, DevoteeBookingRequest } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { DevoteeLookup } from '../components/DevoteeLookup.js';
 import { GothraSelector } from '../components/GothraSelector.js';
 import { TicketPrintModal } from '../components/TicketPrintModal.js';
 import { UpiQrCode } from '../components/UpiQrCode.js';
-import { getTempleToday, getTempleTomorrow } from '../utils/date.js';
+import { getTempleToday, getTempleTomorrow, formatTempleDateTime } from '../utils/date.js';
 import {
   Search, Plus, Minus, Trash2, ShoppingBag, CheckCircle,
-  QrCode, Banknote, AlertTriangle, Sparkles, RefreshCw, Calendar, ArrowDown
+  QrCode, Banknote, AlertTriangle, Sparkles, RefreshCw, Calendar, ArrowDown,
+  Clock, Users, X, Check, ArrowRight
 } from 'lucide-react';
 
 export const BookingCounterPage: React.FC = () => {
@@ -40,11 +41,31 @@ export const BookingCounterPage: React.FC = () => {
   const [printedBookingNumber, setPrintedBookingNumber] = useState('');
   const [issuedTickets, setIssuedTickets] = useState<Ticket[]>([]);
 
+  // Pending Devotee Requests State
+  const [pendingRequests, setPendingRequests] = useState<DevoteeBookingRequest[]>([]);
+  const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
+  const [activeDevoteeRequestId, setActiveDevoteeRequestId] = useState<string | null>(null);
+  const [pendingSearch, setPendingSearch] = useState('');
+
   const cartSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
+    loadPendingRequests();
+
+    // Auto-refresh pending queue every 15 seconds
+    const interval = setInterval(loadPendingRequests, 15000);
+    return () => clearInterval(interval);
   }, []);
+
+  const loadPendingRequests = async () => {
+    try {
+      const list = await apiRequest<DevoteeBookingRequest[]>('/devotee-requests/pending');
+      setPendingRequests(list || []);
+    } catch {
+      // Ignore background fetch error
+    }
+  };
 
   const loadData = async () => {
     setIsLoadingSevas(true);
@@ -75,6 +96,41 @@ export const BookingCounterPage: React.FC = () => {
     } finally {
       setIsLoadingSevas(false);
     }
+  };
+
+  const handleApproveDevoteeRequest = (req: DevoteeBookingRequest) => {
+    const newCart: CartItem[] = [];
+    req.items.forEach(item => {
+      const matchedSeva = sevas.find(s => s.id === item.seva_id) || {
+        id: item.seva_id,
+        name: item.seva_name,
+        telugu_name: item.seva_name,
+        category: 'Daily Pooja',
+        price: item.seva_price,
+        is_active: true,
+        is_scheduled: !!item.scheduled_date,
+        scheduled_date: item.scheduled_date || null,
+        timing: null,
+        description: null
+      };
+      newCart.push({
+        seva: matchedSeva,
+        quantity: item.quantity || 1
+      });
+    });
+
+    setCart(newCart);
+    setBeneficiaryName(req.devotee_name);
+    setGothra(req.gothra);
+    setFamilyDetails(req.family_details || '');
+    setPayerMobile(req.mobile);
+    setPayerName(req.devotee_name);
+    setActiveDevoteeRequestId(req.id);
+    setIsPendingModalOpen(false);
+
+    setTimeout(() => {
+      cartSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 150);
   };
 
   // Categories
@@ -211,6 +267,20 @@ export const BookingCounterPage: React.FC = () => {
       setIssuedTickets(res.tickets);
       setPrintModalOpen(true);
 
+      // If this booking came from an approved devotee request, mark it approved on server
+      if (activeDevoteeRequestId) {
+        try {
+          await apiRequest(`/devotee-requests/${activeDevoteeRequestId}/approve`, {
+            method: 'PATCH',
+            body: JSON.stringify({ booking_id: res.booking.id })
+          });
+          setActiveDevoteeRequestId(null);
+          loadPendingRequests();
+        } catch (e) {
+          console.error('Failed to mark devotee request approved:', e);
+        }
+      }
+
       // Reset
       clearCart();
       setBeneficiaryName('');
@@ -242,16 +312,38 @@ export const BookingCounterPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Prominent Pending Requests Pill Button */}
+          <button
+            type="button"
+            onClick={() => setIsPendingModalOpen(true)}
+            className="relative flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#C86A1B] to-[#9E4A08] hover:from-[#B5590F] hover:to-[#873E05] text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
+          >
+            <Clock className="w-4 h-4 text-amber-200" />
+            <span>భక్తుల పెండింగ్ అభ్యర్థనలు</span>
+            {pendingRequests.length > 0 ? (
+              <span className="ml-1 px-1.5 py-0.2 bg-red-600 text-white text-[10px] font-black rounded-full shadow-xs animate-pulse">
+                {pendingRequests.length}
+              </span>
+            ) : (
+              <span className="ml-1 px-1.5 py-0.2 bg-white/20 text-white text-[10px] rounded-full">
+                0
+              </span>
+            )}
+          </button>
+
           <a
             href="/bookings"
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-lg text-xs font-bold hover:bg-[#F3ECE0]"
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-xl text-xs font-bold hover:bg-[#F3ECE0]"
           >
             📋 నమోదైన సేవలు
           </a>
           <button
-            onClick={loadData}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-lg text-xs font-bold hover:bg-[#F3ECE0]"
+            onClick={() => {
+              loadData();
+              loadPendingRequests();
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded-xl text-xs font-bold hover:bg-[#F3ECE0]"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             రిఫ్రెష్
@@ -710,7 +802,7 @@ export const BookingCounterPage: React.FC = () => {
 
       {/* Mobile Floating Bottom Bar for Quick Action */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-40 bg-[#7A1C23]/95 backdrop-blur-md text-white py-2 px-3.5 rounded-2xl border border-amber-300/40 shadow-xl flex items-center justify-between">
+        <div className="lg:hidden fixed bottom-[76px] left-3 right-3 z-40 bg-[#7A1C23]/95 backdrop-blur-md text-white py-2 px-3.5 rounded-2xl border border-amber-300/40 shadow-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base">🛒</span>
             <div>
@@ -730,6 +822,140 @@ export const BookingCounterPage: React.FC = () => {
             <span>సంకల్పం & చెల్లింపు</span>
             <ArrowDown className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* Devotee Pending Requests Modal */}
+      {isPendingModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-2xl shadow-2xl border border-[#E8DCCE] overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-[#FAF5EC] px-4 sm:px-6 py-3.5 border-b border-[#E8DCCE] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#C86A1B] to-[#873E05] flex items-center justify-center text-white shadow-xs">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-[#7A1C23] font-serif">
+                    భక్తుల పెండింగ్ పూజా అభ్యర్థనలు
+                  </h2>
+                  <p className="text-[11px] text-gray-500">
+                    భక్తులు స్వయంగా సమర్పించిన పూజా వివరాలు ({pendingRequests.length} పెండింగ్‌లో ఉన్నాయి)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPendingModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter by Mobile */}
+            <div className="p-3 bg-white border-b border-[#E8DCCE]">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="భక్తుని మొబైల్ సంఖ్య లేదా పేరు ద్వారా వెతకండి..."
+                  value={pendingSearch}
+                  onChange={(e) => setPendingSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#FAF5EC]/40 border border-[#E8DCCE] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520]"
+                />
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              </div>
+            </div>
+
+            {/* Requests List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8F5EE]/40">
+              {pendingRequests.filter(r => !pendingSearch.trim() || r.mobile.includes(pendingSearch.trim()) || r.devotee_name.toLowerCase().includes(pendingSearch.toLowerCase())).length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-xl border border-[#E8DCCE] space-y-2">
+                  <Clock className="w-8 h-8 text-gray-300 mx-auto" />
+                  <div className="text-xs font-bold text-gray-600">పెండింగ్ అభ్యర్థనలు ఏవీ లేవు</div>
+                  <div className="text-[11px] text-gray-400">భక్తులు తమ మొబైల్ ద్వారా పూజా అభ్యర్థన సమర్పించినప్పుడు ఇక్కడ కనిపిస్తాయి.</div>
+                </div>
+              ) : (
+                pendingRequests
+                  .filter(r => !pendingSearch.trim() || r.mobile.includes(pendingSearch.trim()) || r.devotee_name.toLowerCase().includes(pendingSearch.toLowerCase()))
+                  .map((req) => (
+                    <div
+                      key={req.id}
+                      className="bg-white p-3.5 rounded-xl border border-[#E8DCCE] shadow-xs hover:border-[#C86A1B]/50 transition-all space-y-2"
+                    >
+                      <div className="flex items-center justify-between border-b border-[#E8DCCE]/60 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-[#7A1C23] bg-[#FAF5EC] px-2 py-0.5 rounded border border-[#E8DCCE]">
+                            {req.request_number}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            📱 {req.mobile}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {formatTempleDateTime(req.created_at)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">సంకల్ప కర్త:</span>{' '}
+                          <strong className="text-[#2D2520]">{req.devotee_name}</strong>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">గోత్రం:</span>{' '}
+                          <span className="font-medium text-amber-950">{req.gothra}</span>
+                        </div>
+                        {req.family_details && (
+                          <div className="col-span-2 text-[11px] text-gray-600">
+                            <span className="text-gray-400">కుటుంబం:</span> {req.family_details}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Items */}
+                      <div className="bg-[#FAF5EC]/60 p-2 rounded-lg border border-[#E8DCCE]/70 space-y-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">ఎంచుకున్న పూజలు:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {req.items.map((item, idx) => (
+                            <span key={idx} className="text-xs bg-white px-2 py-0.5 rounded border border-[#E8DCCE] font-medium text-[#7A1C23]">
+                              {item.seva_name} (x{item.quantity}) - ₹{(item.seva_price * item.quantity).toFixed(0)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Action Bar */}
+                      <div className="flex items-center justify-between pt-2 border-t border-[#E8DCCE]/60">
+                        <div>
+                          <span className="text-[11px] text-gray-500">మొత్తం రుసుము: </span>
+                          <span className="text-sm font-black font-mono text-[#7A1C23]">₹{req.total_amount.toFixed(2)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApproveDevoteeRequest(req)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg text-xs font-bold shadow-xs active:scale-95 transition-all"
+                        >
+                          <span>ఆమోదించి చెల్లింపు చేయండి</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-[#FAF5EC] px-4 py-2.5 border-t border-[#E8DCCE] flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPendingModalOpen(false)}
+                className="px-4 py-1.5 bg-white border border-[#E8DCCE] text-gray-700 hover:bg-gray-50 rounded-lg text-xs font-bold"
+              >
+                మూసివేయి
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

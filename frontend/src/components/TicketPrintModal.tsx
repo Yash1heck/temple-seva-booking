@@ -50,6 +50,14 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
   };
 
   const handleReprintSingle = async (ticketId: string) => {
+    const targetTicket = tickets.find(t => t.id === ticketId);
+    if (targetTicket && (targetTicket.status === 'completed' || !!targetTicket.completed_at)) {
+      const confirmReprint = window.confirm(
+        '⚠️ హెచ్చరిక (Security Warning):\nఈ పూజా సేవ ఇప్పటికే ఆలయంలో నిర్వహించబడింది.\nపునఃముద్రిత రశీదుపై "నిర్వహించబడినది (COMPLETED)" ముద్ర స్పష్టంగా కనిపిస్తుంది.\nకొనసాగించాలా?'
+      );
+      if (!confirmReprint) return;
+    }
+
     setReprintingId(ticketId);
     try {
       const updated = await apiRequest<Ticket>(`/tickets/${ticketId}/reprint`, { method: 'POST' });
@@ -113,8 +121,27 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
           {tickets.map((t, idx) => (
             <div
               key={t.id}
-              className="bg-white rounded-xl border border-[#E8DCCE] p-3.5 sm:p-4 shadow-xs relative space-y-2 text-xs text-[#2D2520]"
+              className="bg-white rounded-xl border border-[#E8DCCE] p-3.5 sm:p-4 shadow-xs relative space-y-2 text-xs text-[#2D2520] overflow-hidden"
             >
+              {/* Sacred Rubber Stamp Watermark for Completed Pooja */}
+              {(t.status === 'completed' || !!t.completed_at) && (
+                <div className="absolute top-2 right-20 sm:right-28 pointer-events-none select-none z-10 transform -rotate-12 opacity-95">
+                  <div className="border-2 border-dashed border-red-600 bg-red-50/95 text-red-700 px-3 py-1 rounded-lg shadow-sm flex flex-col items-center">
+                    <span className="text-[10px] sm:text-xs font-black tracking-wider uppercase flex items-center gap-1">
+                      ★ నిర్వహించబడినది ★
+                    </span>
+                    <span className="text-[9px] font-extrabold text-red-600">
+                      POOJA COMPLETED
+                    </span>
+                    {t.completed_at && (
+                      <span className="text-[8px] text-red-800 font-mono mt-0.5">
+                        {formatTempleDateTime(t.completed_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-start border-b border-dashed border-gray-300 pb-2">
                 <div>
                   <div className="font-bold text-sm text-[#7A1C23] font-serif">
@@ -236,6 +263,38 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
               <div style={{ margin: '1.5mm 0', borderBottom: '1px dashed #000' }} />
               <div style={{ fontSize: '12px' }}><strong>సేవా రుసుము:</strong> <strong>రూ. {formatCurrency(t.amount)}/-</strong></div>
               <div><strong>చెల్లింపు విధానం:</strong> {t.payment_method === 'cash' ? 'నగదు చెల్లింపు (స్వీకరించబడింది)' : 'యూపీఐ డిజిటల్ చెల్లింపు (స్వీకరించబడింది)'}</div>
+              
+              {/* Anti-Fraud Completed Pooja Thermal Box */}
+              {(t.status === 'completed' || !!t.completed_at) && (
+                <div style={{
+                  margin: '2mm 0',
+                  border: '2px solid #000',
+                  padding: '1.5mm',
+                  textAlign: 'center',
+                  background: '#fff'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: '900', letterSpacing: '0.5px' }}>
+                    ★ నిర్వహించబడినది / POOJA COMPLETED ★
+                  </div>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', margin: '0.5mm 0' }}>
+                    ఈ పూజా సేవ ఆలయ గర్భగుడిలో సంకల్పముతో నిర్వహించబడింది
+                  </div>
+                  {t.completed_at && (
+                    <div style={{ fontSize: '8.5px' }}>
+                      సమయం: {formatTempleDateTime(t.completed_at)}
+                    </div>
+                  )}
+                  {t.completed_by_name && (
+                    <div style={{ fontSize: '8.5px' }}>
+                      అర్చకులు: {t.completed_by_name}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '8px', fontWeight: 'bold', marginTop: '0.5mm', textDecoration: 'underline' }}>
+                    (గమనిక: ఈ రశీదు ఇప్పటికే పూర్తయింది • పునఃపూజకు చెల్లదు)
+                  </div>
+                </div>
+              )}
+
               {t.reprint_count > 0 && (
                 <div style={{ fontWeight: 'bold', marginTop: '1.5mm', fontSize: '10px', textAlign: 'center' }}>
                   *** పునఃముద్రిత రశీదు (ద్వితీయ ప్రతి - #{t.reprint_count}) ***
