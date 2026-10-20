@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { apiRequest } from '../api/client.js';
 import { PoojaFolderDeck, PoojaFolderItem } from '../components/PoojaFolderDeck.js';
 import { getTempleToday } from '../utils/date.js';
-import { Search, Printer, RefreshCw } from 'lucide-react';
+import { Search, Printer, RefreshCw, Zap, CheckCircle2 } from 'lucide-react';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 
 export const PoojariDashboardPage: React.FC = () => {
@@ -13,6 +13,7 @@ export const PoojariDashboardPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBulkCompleting, setIsBulkCompleting] = useState<boolean>(false);
 
   useEffect(() => {
     loadRituals();
@@ -41,6 +42,25 @@ export const PoojariDashboardPage: React.FC = () => {
       setError(err.message || 'Failed to load ritual queue.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBulkCompleteAll = async () => {
+    const confirmMsg = `శ్రీ శారదా పీఠం సన్నిధానం:\n\nతేదీ: ${selectedDate}\nఈ రోజుకు సంబంధించిన అన్ని పెండింగ్ పూజలను ఒకేసారి "పూర్తయినవి (COMPLETED)" గా నమోదు చేయాలనుకుంటున్నారా?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsBulkCompleting(true);
+    try {
+      await apiRequest('/poojari/batch-complete', {
+        method: 'POST',
+        body: JSON.stringify({ target_date: selectedDate })
+      });
+      await loadRituals();
+      alert('ఈ తేదీ పూజలన్నీ విజయవంతంగా పూర్తయ్యాయి.');
+    } catch (err: any) {
+      alert(err.message || 'పూజలు నమోదు చేయడం విఫలమైంది');
+    } finally {
+      setIsBulkCompleting(false);
     }
   };
 
@@ -100,19 +120,29 @@ export const PoojariDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Micro Icon Action Buttons */}
-        <div className="flex items-center gap-1.5">
+        {/* Micro Icon Action Buttons & Bulk Complete */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={isBulkCompleting || totalDevotees === 0}
+            onClick={handleBulkCompleteAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#7A1C23] via-[#94202A] to-[#5C1217] text-white hover:brightness-110 active:scale-95 rounded-xl text-xs font-bold shadow-xs border border-amber-300/40"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">మొత్తం పూజలను పూర్తి చేయండి (Bulk Complete)</span>
+            <span className="sm:hidden">బల్క్ పూర్తి</span>
+          </button>
           <button
             onClick={handlePrint}
             title="సంకల్ప పట్టిక ముద్రణ"
-            className="w-8 h-8 rounded-xl bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] flex items-center justify-center hover:bg-[#F3ECE0] transition-transform active:scale-95 shadow-2xs"
+            className="w-8 h-8 rounded-xl bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] flex items-center justify-center hover:bg-[#F3ECE0] transition-transform active:scale-95 shadow-2xs shrink-0"
           >
             <Printer className="w-4 h-4" />
           </button>
           <button
             onClick={loadRituals}
             title="రిఫ్రెష్"
-            className="w-8 h-8 rounded-xl bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] flex items-center justify-center hover:bg-[#F3ECE0] transition-transform active:scale-95 shadow-2xs"
+            className="w-8 h-8 rounded-xl bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] flex items-center justify-center hover:bg-[#F3ECE0] transition-transform active:scale-95 shadow-2xs shrink-0"
           >
             <RefreshCw className="w-4 h-4" />
           </button>

@@ -191,6 +191,52 @@ export const BookedSevasPage: React.FC = () => {
         />
       ) : (
         <>
+          {/* Admin 1-Click Bulk Mark Completed Bar */}
+          {isAdmin && (
+            <div className="bg-gradient-to-r from-amber-50 via-[#FAF5EC] to-amber-50 p-3 sm:p-4 rounded-xl border border-amber-300 shadow-2xs mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-700 flex items-center justify-center font-bold text-sm shrink-0">
+                  ⚡
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-[#7A1C23] font-serif">
+                    ఈ తేదీ పూజల సామూహిక నమోదు (Bulk Pooja Completion)
+                  </div>
+                  <div className="text-[11px] text-gray-600">
+                    తేదీ: <strong className="font-mono text-[#2D2520]">{selectedDate}</strong> • పెండింగ్ పూజలు: <strong className="text-amber-800">{ritualCounts.pending}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isBatchCompletingAll || ritualCounts.pending === 0}
+                onClick={handleAdminBatchCompleteForDate}
+                className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                  ritualCounts.pending === 0
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 cursor-default'
+                    : 'bg-gradient-to-r from-[#7A1C23] via-[#94202A] to-[#5C1217] text-white hover:brightness-110 border border-amber-300/40 shadow-amber-900/15'
+                }`}
+              >
+                {ritualCounts.pending === 0 ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>అన్ని పూజలు పూర్తయ్యాయి (All Done)</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 text-amber-300 animate-pulse" />
+                    <span>
+                      {isBatchCompletingAll
+                        ? 'పూర్తవుతున్నాయి...'
+                        : `మొత్తం పూజలను పూర్తి చేయండి (${ritualCounts.pending} పెండింగ్)`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Search & Filters */}
           <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E8DCCE] shadow-xs mb-5 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">

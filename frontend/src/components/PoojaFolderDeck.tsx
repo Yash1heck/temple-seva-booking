@@ -47,7 +47,7 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [cardFilter, setCardFilter] = useState<'pending' | 'completed' | 'all'>('pending');
   const [currentCardIndex, setCurrentCardIndex] = useState<number>(0);
-  const [folderViewMode, setFolderViewMode] = useState<'cards' | 'list'>('cards');
+  const [folderViewMode, setFolderViewMode] = useState<'cards' | 'list'>('list');
 
   // Sacred Sanctum Consecration Stamp Animation State
   const [isStamping, setIsStamping] = useState(false);

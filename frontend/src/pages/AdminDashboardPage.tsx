@@ -574,6 +574,38 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ⚡ UNIVERSAL ADMIN BULK COMPLETE ACTION BAR */}
+      <div className="bg-gradient-to-r from-amber-500/15 via-[#FAF5EC] to-amber-500/15 p-3 sm:p-4 rounded-2xl border border-amber-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7A1C23] to-[#5C1217] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
+            ⚡
+          </div>
+          <div>
+            <div className="text-xs sm:text-sm font-bold text-[#7A1C23] font-serif flex items-center gap-2 flex-wrap">
+              <span>పూజల సామూహిక నమోదు (Bulk Mark All as Completed)</span>
+              <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300">
+                తేదీ: {reportDate}
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-600 mt-0.5">
+              గర్భగుడిలో సంకల్పం పూర్తయిన లేదా టోకెన్ ద్వారా నమోదైన పూజలన్నిటినీ ఒకే క్లిక్‌తో పూర్తి చేయండి.
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={isBulkCompletingOverview}
+          onClick={handleAdminBatchComplete}
+          className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-[#7A1C23] via-[#94202A] to-[#5C1217] hover:brightness-110 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 border border-amber-300/40 shrink-0"
+        >
+          <Zap className="w-4 h-4 text-amber-300 animate-pulse" />
+          <span>
+            {isBulkCompletingOverview ? 'పూర్తవుతున్నాయి...' : `ఈ రోజు మొత్తం పూజలను పూర్తి చేయండి (Bulk Complete)`}
+          </span>
+        </button>
+      </div>
+
       {/* Desktop Metric Cards (Frosted Glass) */}
       {todaySummary && (
         <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
