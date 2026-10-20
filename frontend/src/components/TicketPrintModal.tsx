@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Ticket } from '../types.js';
 import { Printer, X, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { apiRequest } from '../api/client.js';
@@ -66,8 +67,9 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E8DCCE] overflow-hidden flex flex-col max-h-[92vh]">
+    <>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 print:hidden">
+        <div className="relative w-full max-w-2xl bg-[#FDFBF7] rounded-xl shadow-2xl border border-[#E8DCCE] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="bg-[#FAF5EC] px-4 sm:px-6 py-3.5 border-b border-[#E8DCCE] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -201,8 +203,10 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
           </button>
         </div>
       </div>
+    </div>
 
-      {/* HIDDEN CONTAINER FOR BROWSER THERMAL PRINTING (80mm) */}
+    {createPortal(
+      /* BROWSER THERMAL PRINTING (80mm) PORTALED DIRECTLY TO BODY */
       <div id="thermal-print-container" className="hidden print:block">
         {tickets.map((t, idx) => (
           <div key={`print-${t.id}`} className="ticket-thermal-page">
@@ -247,7 +251,9 @@ export const TicketPrintModal: React.FC<TicketPrintModalProps> = ({
             </div>
           </div>
         ))}
-      </div>
-    </div>
+      </div>,
+      document.body
+    )}
+  </>
   );
 };

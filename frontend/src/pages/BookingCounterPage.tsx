@@ -217,7 +217,7 @@ export const BookingCounterPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-40 lg:pb-12">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[#E8DCCE]">
         <div>
@@ -655,19 +655,22 @@ export const BookingCounterPage: React.FC = () => {
 
       {/* Mobile Floating Bottom Bar for Quick Action */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-[#7A1C23] text-white p-3 shadow-2xl flex items-center justify-between border-t border-amber-400/40">
-          <div>
-            <div className="text-xs font-bold text-amber-200">
-              {totalItemCount} సేవలు ఎంచుకున్నారు
-            </div>
-            <div className="text-sm font-extrabold">
-              మొత్తం: ₹{cartTotal.toFixed(2)}
+        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-40 bg-[#7A1C23]/95 backdrop-blur-md text-white py-2 px-3.5 rounded-2xl border border-amber-300/40 shadow-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🛒</span>
+            <div>
+              <div className="text-[11px] font-bold text-amber-200">
+                {totalItemCount} సేవలు ఎంచుకున్నారు
+              </div>
+              <div className="text-xs font-mono font-extrabold text-white">
+                మొత్తం: ₹{cartTotal.toFixed(2)}
+              </div>
             </div>
           </div>
           <button
             type="button"
             onClick={scrollToCart}
-            className="px-3.5 py-2 bg-[#E0AE18] text-[#7A1C23] rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+            className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 active:scale-95 text-[#7A1C23] rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition-transform"
           >
             <span>సంకల్పం & చెల్లింపు</span>
             <ArrowDown className="w-3.5 h-3.5" />

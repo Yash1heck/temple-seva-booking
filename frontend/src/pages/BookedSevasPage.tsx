@@ -8,8 +8,11 @@ import { formatCurrency } from '../utils/format.js';
 import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 import { Search, Calendar, RefreshCw, Printer, BookOpen, Layers, Sparkles, ListFilter, CheckCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.js';
 
 export const BookedSevasPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [activeView, setActiveView] = useState<'transactions' | 'schedule'>('transactions');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [search, setSearch] = useState('');
@@ -74,7 +77,7 @@ export const BookedSevasPage: React.FC = () => {
   }, [bookings, filterMode, selectedDate]);
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-32 lg:pb-12">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[#E8DCCE]">
         <div>
@@ -107,36 +110,38 @@ export const BookedSevasPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main View Mode Switcher (Clean, no numbered labels) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => setActiveView('transactions')}
-          className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border ${
-            activeView === 'transactions'
-              ? 'bg-[#7A1C23] text-white border-[#7A1C23] shadow-sm'
-              : 'bg-white text-[#7A1C23] border-[#E8DCCE] hover:bg-[#FAF5EC]'
-          }`}
-        >
-          <ListFilter className="w-4 h-4" />
-          కౌంటర్ బుకింగ్ రికార్డులు (రసీదుల జాబితా)
-        </button>
+      {/* Main View Mode Switcher: Only visible for Administrators */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setActiveView('transactions')}
+            className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border ${
+              activeView === 'transactions'
+                ? 'bg-[#7A1C23] text-white border-[#7A1C23] shadow-sm'
+                : 'bg-white text-[#7A1C23] border-[#E8DCCE] hover:bg-[#FAF5EC]'
+            }`}
+          >
+            <ListFilter className="w-4 h-4" />
+            కౌంటర్ బుకింగ్ రికార్డులు (రసీదుల జాబితా)
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveView('schedule')}
-          className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border ${
-            activeView === 'schedule'
-              ? 'bg-[#7A1C23] text-white border-[#7A1C23] shadow-sm'
-              : 'bg-white text-[#7A1C23] border-[#E8DCCE] hover:bg-[#FAF5EC]'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-[#E0AE18]" />
-          పూజా సంకల్ప పట్టిక (ఆలయ పూజారుల కొరకు & ముద్రణ)
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setActiveView('schedule')}
+            className={`flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border ${
+              activeView === 'schedule'
+                ? 'bg-[#7A1C23] text-white border-[#7A1C23] shadow-sm'
+                : 'bg-white text-[#7A1C23] border-[#E8DCCE] hover:bg-[#FAF5EC]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#E0AE18]" />
+            పూజా సంకల్ప పట్టిక (ఆలయ పూజారుల కొరకు & ముద్రణ)
+          </button>
+        </div>
+      )}
 
-      {activeView === 'schedule' ? (
+      {isAdmin && activeView === 'schedule' ? (
         <RitualScheduleView
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}

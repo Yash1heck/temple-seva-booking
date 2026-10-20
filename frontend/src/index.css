@@ -74,6 +74,13 @@
 
 /* Printing Styles (Thermal 80mm Tickets & A4 Sankalpa Sheets) */
 @media print {
+  html, body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -86,36 +93,42 @@
   }
 
   #thermal-print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 78mm;
-    margin: 0;
-    padding: 0;
+    position: static !important;
+    display: block !important;
+    width: 78mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
 
   #sankalpa-print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 10mm;
-    font-family: serif, -apple-system, sans-serif;
-    color: #000000;
-    background: #FFFFFF;
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm !important;
+    font-family: serif, -apple-system, sans-serif !important;
+    color: #000000 !important;
+    background: #FFFFFF !important;
+    box-sizing: border-box !important;
   }
 
   .ticket-thermal-page {
-    page-break-after: always;
-    page-break-inside: avoid;
-    width: 78mm;
-    margin-bottom: 2mm;
-    padding: 3mm;
-    font-family: monospace, Courier, sans-serif;
-    color: #000000;
-    background: #FFFFFF;
-    border-bottom: 1px dashed #000000;
+    display: block !important;
+    position: static !important;
+    page-break-before: auto !important;
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    break-after: page !important;
+    break-inside: avoid !important;
+    width: 78mm !important;
+    margin: 0 auto 4mm auto !important;
+    padding: 3.5mm !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif !important;
+    color: #000000 !important;
+    background: #FFFFFF !important;
+    border-bottom: 2px dashed #000000 !important;
+    box-sizing: border-box !important;
   }
 }
 

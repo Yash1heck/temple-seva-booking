@@ -88,7 +88,7 @@ export const DevoteeLookup: React.FC<DevoteeLookupProps> = ({
               setQuery(e.target.value);
               setPayerMobile(e.target.value);
             }}
-            placeholder="10 అంకెల మొబైల్ సంఖ్య లేదా భక్తుని పేరు నమోదు చేయండి"
+            placeholder="10 అంకెల మొబైల్ సంఖ్య నమోదు చేయండి (Enter 10-digit mobile number)"
             className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-[#E8DCCE] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C86A1B] text-[#2D2520] font-medium"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-2.5" />

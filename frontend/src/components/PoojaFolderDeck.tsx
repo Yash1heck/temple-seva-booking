@@ -342,9 +342,13 @@ export const PoojaFolderDeck: React.FC<PoojaFolderDeckProps> = ({
                     <div>
                       <div className="flex items-baseline gap-1">
                         <span className={`text-xl font-bold font-mono leading-none ${countColor}`}>
-                          {stats.total}
+                          {stats.pending}
                         </span>
-                        <span className="text-[10px] text-gray-500">భక్తులు</span>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {stats.total > 0 && stats.completed > 0
+                            ? `మిగిలినవి (${stats.total}లో)`
+                            : 'భక్తులు'}
+                        </span>
                       </div>
                     </div>
 

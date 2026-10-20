@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { apiRequest } from '../api/client.js';
 import { PoojaFolderDeck, PoojaFolderItem } from '../components/PoojaFolderDeck.js';
 import { getTempleToday } from '../utils/date.js';
 import { Search, Printer, RefreshCw } from 'lucide-react';
+import { toTeluguText, formatTeluguGothram } from '../utils/teluguTransliterate.js';
 
 export const PoojariDashboardPage: React.FC = () => {
   const [rituals, setRituals] = useState<PoojaFolderItem[]>([]);
@@ -194,6 +196,72 @@ export const PoojariDashboardPage: React.FC = () => {
           onRefresh={loadRituals}
           showPrintOption={true}
         />
+      )}
+
+      {/* A4 PRINT ROSTER FOR POOJARIS (Cross-device desktop & mobile print) */}
+      {createPortal(
+        <div id="sankalpa-print-container" className="hidden print:block">
+          <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0' }}>
+              శ్రీ శారదా పీఠం దేవస్థానం
+            </h1>
+            <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '4px 0 0 0' }}>
+              అర్చక పూజా సంకల్ప పట్టిక (DAILY POOJA SANKALPA ROSTER)
+            </h2>
+            <div style={{ fontSize: '12.5px', marginTop: '6px' }}>
+              <strong>పూజా నిర్వహణ తేదీ:</strong> {selectedDate} | <strong>మొత్తం సంకల్ప కర్తలు:</strong> {totalDevotees}
+            </div>
+          </div>
+
+          {rituals.map((r, sIdx) => (
+            <div key={r.seva_id} style={{ marginBottom: '22px', pageBreakInside: 'avoid' }}>
+              <div style={{ background: '#f0f0f0', padding: '6px 10px', fontWeight: 'bold', fontSize: '13.5px', border: '1px solid #000' }}>
+                {sIdx + 1}. {r.telugu_name || r.seva_name} ({r.seva_name}) - [{r.registrations.length} మంది భక్తులు]
+                {r.timing && <span style={{ fontSize: '11px', fontWeight: 'normal', marginLeft: '10px' }}>({r.timing})</span>}
+              </div>
+
+              {r.registrations.length === 0 ? (
+                <div style={{ padding: '8px', border: '1px solid #000', borderTop: 'none', fontSize: '11.5px', fontStyle: 'italic' }}>
+                  ఈ సేవకు ఈ తేదీన ఎటువంటి నమోదులు లేవు.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', border: '1px solid #000', borderTop: 'none' }}>
+                  <thead>
+                    <tr style={{ background: '#eaeaea' }}>
+                      <th style={{ border: '1px solid #000', padding: '5px', width: '35px', textAlign: 'center' }}>క్రమ</th>
+                      <th style={{ border: '1px solid #000', padding: '5px', width: '120px' }}>టికెట్ సంఖ్య</th>
+                      <th style={{ border: '1px solid #000', padding: '5px' }}>సంకల్ప కర్త</th>
+                      <th style={{ border: '1px solid #000', padding: '5px', width: '100px' }}>గోత్రం</th>
+                      <th style={{ border: '1px solid #000', padding: '5px' }}>కుటుంబ సభ్యులు / నక్షత్రం</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.registrations.map((reg, idx) => (
+                      <tr key={reg.ticket_number}>
+                        <td style={{ border: '1px solid #000', padding: '5px', textAlign: 'center' }}>{idx + 1}</td>
+                        <td style={{ border: '1px solid #000', padding: '5px', fontFamily: 'monospace', fontWeight: 'bold' }}>{reg.ticket_number}</td>
+                        <td style={{ border: '1px solid #000', padding: '5px', fontWeight: 'bold' }}>
+                          {toTeluguText(reg.ritual_beneficiary_name)}
+                        </td>
+                        <td style={{ border: '1px solid #000', padding: '5px' }}>
+                          {formatTeluguGothram(reg.gothra)}
+                        </td>
+                        <td style={{ border: '1px solid #000', padding: '5px' }}>
+                          {reg.family_details ? toTeluguText(reg.family_details) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ))}
+
+          <div style={{ textAlign: 'center', marginTop: '24px', borderTop: '1px dashed #000', paddingTop: '10px', fontSize: '11px' }}>
+            ॥ శ్రీ శారదాంబికాయై నమః • సర్వే జనాః సుఖినో భవంతు • సమస్త సన్మంగళాని భవంతు ॥
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
