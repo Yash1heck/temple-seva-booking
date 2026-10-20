@@ -42,6 +42,7 @@ export const AdminDashboardPage: React.FC = () => {
       if (tabFromUrl === 'closure') loadClosureStatus();
       if (tabFromUrl === 'retention') loadRetentionPreview();
       if (tabFromUrl === 'audit') loadAuditLogs();
+      if (tabFromUrl === 'settings') loadSettings();
     }
   }, [searchParams]);
 
@@ -52,6 +53,7 @@ export const AdminDashboardPage: React.FC = () => {
     if (tabId === 'closure') loadClosureStatus();
     if (tabId === 'retention') loadRetentionPreview();
     if (tabId === 'audit') loadAuditLogs();
+    if (tabId === 'settings') loadSettings();
   };
 
   const handleAdminBatchComplete = async () => {
@@ -188,6 +190,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [cancellationReason, setరద్దుlationReason] = useState('');
 
   useEffect(() => {
+    setSankalpaFilter('all');
     loadOverview();
   }, [reportDate, bookingFilterType]);
 
@@ -412,9 +415,10 @@ export const AdminDashboardPage: React.FC = () => {
   const baseBookingsList = useMemo<Booking[]>(() => {
     if (bookingFilterType === 'scheduled_date' && reportDate) {
       return (bookings as Booking[]).map(b => {
-        const relevantItems = (b.items_summary || []).filter((item: any) =>
-          item.scheduled_date === reportDate || (!item.scheduled_date && reportDate === getTempleToday())
-        );
+        const relevantItems = (b.items_summary || []).filter((item: any) => {
+          const itemDate = item.scheduled_date ? String(item.scheduled_date).slice(0, 10) : null;
+          return itemDate === reportDate || (!itemDate && reportDate === getTempleToday());
+        });
         return {
           ...b,
           items_summary: relevantItems
@@ -919,13 +923,7 @@ export const AdminDashboardPage: React.FC = () => {
           return (
             <button
               key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id as any);
-                if (tab.id === 'reports') loadReport();
-                if (tab.id === 'closure') loadClosureStatus();
-                if (tab.id === 'retention') loadRetentionPreview();
-                if (tab.id === 'audit') loadAuditLogs();
-              }}
+              onClick={() => switchTab(tab.id as any)}
               className={`py-1.5 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 isActive
                   ? 'bg-[#7A1C23] text-white shadow-2xs'
@@ -2504,7 +2502,13 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* TAB 8: SETTINGS */}
-      {activeTab === 'settings' && templeSettings && (
+      {activeTab === 'settings' && (
+        !templeSettings ? (
+          <div className="glass-surface p-12 rounded-2xl border border-white/80 text-center space-y-3 my-6">
+            <RefreshCw className="w-8 h-8 text-[#C86A1B] animate-spin mx-auto" />
+            <div className="text-sm font-bold text-[#7A1C23]">ఆలయ అమరికలు లోడ్ అవుతున్నాయి...</div>
+          </div>
+        ) : (
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
           <div className="bg-white p-5 rounded-xl border border-[#E8DCCE] shadow-sm flex items-center justify-between">
@@ -2827,6 +2831,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* Ticket Modal */}
