@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { Navbar } from './components/Navbar.js';
@@ -7,6 +7,7 @@ import { BookingCounterPage } from './pages/BookingCounterPage.js';
 import { BookedSevasPage } from './pages/BookedSevasPage.js';
 import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { PoojariDashboardPage } from './pages/PoojariDashboardPage.js';
+import { playTempleBell } from './utils/templeAudio.js';
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -46,6 +47,31 @@ const RootRedirect: React.FC = () => {
 };
 
 export const App: React.FC = () => {
+  useEffect(() => {
+    // Play bell sound on reload / initial launch
+    let played = false;
+    const triggerBell = () => {
+      if (!played) {
+        played = true;
+        playTempleBell(0.6);
+        window.removeEventListener('pointerdown', triggerBell);
+        window.removeEventListener('keydown', triggerBell);
+      }
+    };
+
+    // Try playing immediately (works if user has visited or browser allows audio)
+    playTempleBell(0.5);
+
+    // If browser autoplay policy holds it until user gesture, chime on first tap/click anywhere
+    window.addEventListener('pointerdown', triggerBell, { once: true });
+    window.addEventListener('keydown', triggerBell, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', triggerBell);
+      window.removeEventListener('keydown', triggerBell);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

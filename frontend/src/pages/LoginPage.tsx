@@ -18,11 +18,11 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
+    // Play authentic temple bell chime immediately on user interaction
+    playTempleBell(0.7);
 
     try {
       const loggedUser = await login(username, password);
-      // Play authentic 3-second temple bell chime
-      playTempleBell(0.6);
       if (loggedUser.role === 'admin') {
         navigate('/admin');
       } else if (loggedUser.role === 'poojari') {
