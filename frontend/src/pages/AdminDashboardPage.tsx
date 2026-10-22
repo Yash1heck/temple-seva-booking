@@ -14,7 +14,7 @@ import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
   Lock, Unlock, RefreshCw, FileText, Settings, History, CheckSquare,
-  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff, Zap
+  Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff, Zap, Key
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -93,14 +93,28 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Settings State & 2-Step Payment Freeze Lock
+  // Settings State & Dedicated Payment Security PIN Freeze Lock
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [isUpiUnlocked, setIsUpiUnlocked] = useState(false);
-  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
-  const [adminUnlockPassword, setAdminUnlockPassword] = useState('');
-  const [unlockErrorMsg, setUnlockErrorMsg] = useState<string | null>(null);
-  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
-  const [showUnlockPass, setShowUnlockPass] = useState(false);
+  const [isPinUnlockModalOpen, setIsPinUnlockModalOpen] = useState(false);
+  const [inputPin, setInputPin] = useState('');
+  const [pinErrorMsg, setPinErrorMsg] = useState<string | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+
+  // PIN Change / Reset State
+  const [isPinChangeModalOpen, setIsPinChangeModalOpen] = useState(false);
+  const [pinResetMode, setPinResetMode] = useState<'current_pin' | 'admin_password'>('current_pin');
+  const [pinChangeForm, setPinChangeForm] = useState({
+    current_pin: '',
+    admin_password: '',
+    new_pin: '',
+    confirm_pin: ''
+  });
+  const [showCurrentPinOrPass, setShowCurrentPinOrPass] = useState(false);
+  const [showNewPin, setShowNewPin] = useState(false);
+  const [pinChangeErrorMsg, setPinChangeErrorMsg] = useState<string | null>(null);
+  const [isChangingPin, setIsChangingPin] = useState(false);
   const [upiForm, setUpiForm] = useState({
     merchant_name: '',
     upi_id: '',
@@ -299,29 +313,81 @@ export const AdminDashboardPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleVerifyUnlockPassword = async (e: React.FormEvent) => {
+  const handleVerifyPin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminUnlockPassword.trim()) {
-      setUnlockErrorMsg('దయచేసి అడ్మిన్ పాస్‌వర్డ్ నమోదు చేయండి');
+    if (!inputPin.trim()) {
+      setPinErrorMsg('దయచేసి సెక్యూరిటీ పిన్ నమోదు చేయండి (Please enter Security PIN)');
       return;
     }
 
-    setIsVerifyingPassword(true);
-    setUnlockErrorMsg(null);
+    setIsVerifyingPin(true);
+    setPinErrorMsg(null);
     try {
-      await apiRequest('/settings/verify-admin-password', {
+      await apiRequest('/settings/verify-payment-pin', {
         method: 'POST',
-        body: JSON.stringify({ password: adminUnlockPassword.trim() })
+        body: JSON.stringify({ pin: inputPin.trim() })
       });
       setIsUpiUnlocked(true);
       setIsEditingUpi(true);
-      setIsUnlockModalOpen(false);
-      setAdminUnlockPassword('');
+      setIsPinUnlockModalOpen(false);
+      setInputPin('');
       playTempleBell(0.4);
     } catch (err: any) {
-      setUnlockErrorMsg(err.message || 'నమోదు చేసిన పాస్‌వర్డ్ సరిపోలలేదు. కేవలం అధీకృత అడ్మిన్ మాత్రమే అన్‌లాక్ చేయగలరు.');
+      setPinErrorMsg(err.message || 'నమోదు చేసిన సెక్యూరిటీ పిన్ సరిపోలలేదు. (Incorrect PIN)');
     } finally {
-      setIsVerifyingPassword(false);
+      setIsVerifyingPin(false);
+    }
+  };
+
+  const handleChangePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinChangeErrorMsg(null);
+
+    if (!pinChangeForm.new_pin || pinChangeForm.new_pin.length < 4) {
+      setPinChangeErrorMsg('కొత్త పిన్ కనీసం 4 అంకెలు ఉండాలి (New PIN must be at least 4 digits)');
+      return;
+    }
+
+    if (pinChangeForm.new_pin !== pinChangeForm.confirm_pin) {
+      setPinChangeErrorMsg('ధృవీకరణ పిన్ సరిపోలలేదు (Confirm PIN does not match)');
+      return;
+    }
+
+    if (pinResetMode === 'current_pin' && !pinChangeForm.current_pin.trim()) {
+      setPinChangeErrorMsg('దయచేసి ప్రస్తుత పిన్ నమోదు చేయండి (Enter current PIN)');
+      return;
+    }
+
+    if (pinResetMode === 'admin_password' && !pinChangeForm.admin_password.trim()) {
+      setPinChangeErrorMsg('దయచేసి అడ్మిన్ పాస్‌వర్డ్ నమోదు చేయండి (Enter admin password)');
+      return;
+    }
+
+    setIsChangingPin(true);
+    try {
+      const payload: any = {
+        new_pin: pinChangeForm.new_pin.trim()
+      };
+      if (pinResetMode === 'current_pin') {
+        payload.current_pin = pinChangeForm.current_pin.trim();
+      } else {
+        payload.admin_password = pinChangeForm.admin_password.trim();
+      }
+
+      await apiRequest('/settings/change-payment-pin', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      alert('సెక్యూరిటీ పిన్ విజయవంతంగా మార్చబడింది / రీసెట్ చేయబడింది! (Payment Security PIN updated successfully)');
+      setIsPinChangeModalOpen(false);
+      setPinChangeForm({ current_pin: '', admin_password: '', new_pin: '', confirm_pin: '' });
+      playTempleBell(0.4);
+      loadSettings();
+    } catch (err: any) {
+      setPinChangeErrorMsg(err.message || 'పిన్ మార్చడం విఫలమైంది');
+    } finally {
+      setIsChangingPin(false);
     }
   };
 
@@ -2572,19 +2638,35 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {!isUpiUnlocked ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUnlockModalOpen(true);
-                        setUnlockErrorMsg(null);
-                        setAdminUnlockPassword('');
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
-                      title="అడ్మిన్ పాస్‌వర్డ్ ద్వారా చెల్లింపు చిత్రాన్ని అన్‌లాక్ చేయండి"
-                    >
-                      <Lock className="w-3.5 h-3.5 text-amber-200" />
-                      <span>అన్‌లాక్ చేయండి (Unlock)</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPinUnlockModalOpen(true);
+                          setPinErrorMsg(null);
+                          setInputPin('');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
+                        title="రహస్య సెక్యూరిటీ పిన్ ద్వారా చెల్లింపు చిత్రాన్ని అన్‌లాక్ చేయండి"
+                      >
+                        <Lock className="w-3.5 h-3.5 text-amber-200" />
+                        <span>అన్‌లాక్ (Unlock PIN)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPinChangeModalOpen(true);
+                          setPinChangeErrorMsg(null);
+                          setPinResetMode('current_pin');
+                          setPinChangeForm({ current_pin: '', admin_password: '', new_pin: '', confirm_pin: '' });
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 rounded-xl text-xs font-semibold shadow-2xs active:scale-95 transition-all"
+                        title="సెక్యూరిటీ పిన్ మార్చండి లేదా అడ్మిన్ పాస్‌వర్డ్ ద్వారా రీసెట్ చేయండి"
+                      >
+                        <Key className="w-3.5 h-3.5 text-amber-700" />
+                        <span>పిన్ రీసెట్ (PIN Reset)</span>
+                      </button>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -2599,20 +2681,33 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
 
               {!isUpiUnlocked ? (
-                <div className="p-3 bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs text-emerald-950">
-                    <Shield className="w-4 h-4 text-emerald-700 shrink-0" />
+                <div className="p-3.5 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/90 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-start gap-2.5 text-xs text-amber-950">
+                    <Shield className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                     <div>
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>🔒 చెల్లింపు చిత్రం ఫ్రీజ్ చేయబడింది (Tamper-Proof Locked)</span>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
-                          రక్షిత స్థితి
+                        <span>🔒 రక్షిత చిత్రం - సెక్యూరిటీ పిన్ రక్షణ (PIN-Protected Standee QR)</span>
+                        <span className="text-[10px] bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                          {templeSettings?.payment_security_pin?.is_set ? 'కస్టమ్ పిన్ సక్రియం' : 'డిఫాల్ట్ పిన్: 1008'}
                         </span>
                       </div>
-                      <div className="text-[11px] text-gray-600 mt-0.5">
-                        ఆలయ నిధుల భద్రత దృష్ట్యా ఈ చిత్రాన్ని కేవలం అడ్మిన్ పాస్‌వర్డ్ ధృవీకరణతో మాత్రమే మార్చగలరు.
+                      <div className="text-[11px] text-gray-600 mt-1 leading-relaxed">
+                        ఆలయ నిధుల భద్రత దృష్ట్యా ఈ చెల్లింపు క్యూఆర్ కోడ్‌ను కేవలం రహస్య సెక్యూరిటీ పిన్ ఉన్న యూజర్ మాత్రమే మార్చగలరు.
                       </div>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPinUnlockModalOpen(true);
+                        setPinErrorMsg(null);
+                        setInputPin('');
+                      }}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-2xs"
+                    >
+                      🔓 అన్‌లాక్ చేయండి
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -2975,15 +3070,15 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
-      {/* 2-Step Freeze: Admin Password Verification Modal to Unlock Payment Picture */}
-      {isUnlockModalOpen && (
+      {/* Payment Security PIN: Unlock Modal */}
+      {isPinUnlockModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-[#E8DCCE] p-6 max-w-md w-full space-y-4 shadow-2xl relative">
             <button
               onClick={() => {
-                setIsUnlockModalOpen(false);
-                setAdminUnlockPassword('');
-                setUnlockErrorMsg(null);
+                setIsPinUnlockModalOpen(false);
+                setInputPin('');
+                setPinErrorMsg(null);
               }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-md"
             >
@@ -2996,58 +3091,82 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-base text-[#7A1C23] font-serif">
-                  చెల్లింపు చిత్ర భద్రత & అన్‌లాక్
+                  చెల్లింపు చిత్ర సెక్యూరిటీ పిన్
                 </h3>
                 <p className="text-[11px] text-gray-500">
-                  Verify Master Admin Password to modify QR Standee
+                  Enter Payment Security PIN to unlock Standee QR
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-600 leading-relaxed bg-[#FAF5EC] p-3 rounded-xl border border-[#E8DCCE]">
-              ఈ క్యూఆర్ కోడ్ ద్వారా భక్తుల నిధులు నేరుగా ఆలయ అధికారిక బ్యాంకు ఖాతాకు జమ అవుతాయి. అనధికారిక లేదా పొరపాటు మార్పులను నిరోధించడానికి దయచేసి మీ అడ్మిన్ పాస్‌వర్డ్ నమోదు చేసి అన్‌లాక్ చేయండి.
-            </p>
+            <div className="text-xs text-gray-600 leading-relaxed bg-[#FAF5EC] p-3 rounded-xl border border-[#E8DCCE] space-y-1">
+              <p>
+                ఈ క్యూఆర్ కోడ్ ద్వారా భక్తుల నిధులు నేరుగా ఆలయ బ్యాంకు ఖాతాకు జమ అవుతాయి. అనధికారిక మార్పులను నిరోధించడానికి అధీకృత సెక్యూరిటీ పిన్ నమోదు చేయండి.
+              </p>
+              <p className="text-[11px] font-semibold text-amber-800">
+                (మొదటిసారి కాన్ఫిగర్ చేయని యెడల డిఫాల్ట్ పిన్: <strong>1008</strong>)
+              </p>
+            </div>
 
-            {unlockErrorMsg && (
+            {pinErrorMsg && (
               <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{unlockErrorMsg}</span>
+                <span>{pinErrorMsg}</span>
               </div>
             )}
 
-            <form onSubmit={handleVerifyUnlockPassword} className="space-y-3">
+            <form onSubmit={handleVerifyPin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  అడ్మిన్ పాస్‌వర్డ్ (Admin Password) *
+                  రహస్య సెక్యూరిటీ పిన్ (Security PIN) *
                 </label>
                 <div className="relative">
                   <input
-                    type={showUnlockPass ? 'text' : 'password'}
+                    type={showPin ? 'text' : 'password'}
                     required
                     autoFocus
-                    value={adminUnlockPassword}
-                    onChange={(e) => setAdminUnlockPassword(e.target.value)}
-                    placeholder="మీ అడ్మిన్ పాస్‌వర్డ్ నమోదు చేయండి..."
-                    className="w-full pl-9 pr-10 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    maxLength={10}
+                    value={inputPin}
+                    onChange={(e) => setInputPin(e.target.value)}
+                    placeholder="4-అంకెల సెక్యూరిటీ పిన్ (e.g. 1008)"
+                    className="w-full pl-9 pr-10 py-2.5 border border-[#E8DCCE] rounded-xl text-sm font-mono tracking-widest bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
                   />
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                   <button
                     type="button"
-                    onClick={() => setShowUnlockPass(!showUnlockPass)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                   >
-                    {showUnlockPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPinUnlockModalOpen(false);
+                    setInputPin('');
+                    setPinErrorMsg(null);
+                    setPinResetMode('admin_password');
+                    setPinChangeForm({ current_pin: '', admin_password: '', new_pin: '', confirm_pin: '' });
+                    setIsPinChangeModalOpen(true);
+                  }}
+                  className="text-amber-800 hover:text-amber-950 font-bold hover:underline flex items-center gap-1"
+                >
+                  <Key className="w-3.5 h-3.5 text-amber-700" />
+                  <span>పిన్ మర్చిపోయారా? అడ్మిన్ పాస్‌వర్డ్ ద్వారా రీసెట్ చేయండి</span>
+                </button>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => {
-                    setIsUnlockModalOpen(false);
-                    setAdminUnlockPassword('');
-                    setUnlockErrorMsg(null);
+                    setIsPinUnlockModalOpen(false);
+                    setInputPin('');
+                    setPinErrorMsg(null);
                   }}
                   className="px-3.5 py-2 border border-[#E8DCCE] rounded-xl text-xs font-bold text-gray-700 bg-white hover:bg-gray-50"
                 >
@@ -3055,11 +3174,204 @@ export const AdminDashboardPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isVerifyingPassword}
+                  disabled={isVerifyingPin}
                   className="px-4 py-2 bg-gradient-to-r from-[#7A1C23] to-[#5C1217] hover:brightness-110 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-50 transition-all"
                 >
                   <Unlock className="w-3.5 h-3.5 text-amber-200" />
-                  <span>{isVerifyingPassword ? 'ధృవీకరిస్తోంది...' : 'ధృవీకరించండి & అన్‌లాక్ చేయండి'}</span>
+                  <span>{isVerifyingPin ? 'ధృవీకరిస్తోంది...' : 'పిన్ ధృవీకరించి అన్‌లాక్ చేయండి'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Security PIN: Change / Reset Modal */}
+      {isPinChangeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#E8DCCE] p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setIsPinChangeModalOpen(false);
+                setPinChangeErrorMsg(null);
+                setPinChangeForm({ current_pin: '', admin_password: '', new_pin: '', confirm_pin: '' });
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-md"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-[#E8DCCE] pb-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 text-white flex items-center justify-center font-bold text-lg shadow-2xs">
+                🔑
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-[#7A1C23] font-serif">
+                  సెక్యూరిటీ పిన్ మార్చండి / రీసెట్
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Update Payment Security PIN or Master Admin Reset
+                </p>
+              </div>
+            </div>
+
+            {/* Mode Selector Tabs */}
+            <div className="flex bg-[#FAF5EC] p-1 rounded-xl border border-[#E8DCCE] text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setPinResetMode('current_pin');
+                  setPinChangeErrorMsg(null);
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                  pinResetMode === 'current_pin'
+                    ? 'bg-white text-[#7A1C23] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                🔐 ప్రస్తుత పిన్ ద్వారా
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPinResetMode('admin_password');
+                  setPinChangeErrorMsg(null);
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                  pinResetMode === 'admin_password'
+                    ? 'bg-white text-[#7A1C23] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                🔑 అడ్మిన్ పాస్‌వర్డ్ రీసెట్
+              </button>
+            </div>
+
+            {pinChangeErrorMsg && (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{pinChangeErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangePin} className="space-y-3">
+              {pinResetMode === 'current_pin' ? (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    ప్రస్తుత సెక్యూరిటీ పిన్ (Current PIN) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPinOrPass ? 'text' : 'password'}
+                      required
+                      value={pinChangeForm.current_pin}
+                      onChange={(e) => setPinChangeForm({ ...pinChangeForm, current_pin: e.target.value })}
+                      placeholder="ప్రస్తుత పిన్ నమోదు చేయండి (డిఫాల్ట్: 1008)"
+                      className="w-full pl-9 pr-10 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                    <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPinOrPass(!showCurrentPinOrPass)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      {showCurrentPinOrPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    అడ్మిన్ ఖాతా పాస్‌వర్డ్ (Master Admin Password) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPinOrPass ? 'text' : 'password'}
+                      required
+                      value={pinChangeForm.admin_password}
+                      onChange={(e) => setPinChangeForm({ ...pinChangeForm, admin_password: e.target.value })}
+                      placeholder="అడ్మిన్ లాగిన్ పాస్‌వర్డ్ నమోదు చేయండి..."
+                      className="w-full pl-9 pr-10 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                    />
+                    <Shield className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPinOrPass(!showCurrentPinOrPass)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      {showCurrentPinOrPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    పిన్ మర్చిపోయినప్పుడు ప్రధాన అడ్మిన్ పాస్‌వర్డ్ ద్వారా నూతన పిన్ రీసెట్ చేయవచ్చు.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  నూతన సెక్యూరిటీ పిన్ (New PIN) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPin ? 'text' : 'password'}
+                    required
+                    minLength={4}
+                    maxLength={10}
+                    value={pinChangeForm.new_pin}
+                    onChange={(e) => setPinChangeForm({ ...pinChangeForm, new_pin: e.target.value })}
+                    placeholder="కనీసం 4 అంకెల కొత్త పిన్..."
+                    className="w-full pl-9 pr-10 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none font-mono"
+                  />
+                  <Key className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPin(!showNewPin)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {showNewPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  నూతన పిన్ నిర్ధారించండి (Confirm New PIN) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    minLength={4}
+                    maxLength={10}
+                    value={pinChangeForm.confirm_pin}
+                    onChange={(e) => setPinChangeForm({ ...pinChangeForm, confirm_pin: e.target.value })}
+                    placeholder="మరలా కొత్త పిన్ నమోదు చేయండి..."
+                    className="w-full pl-9 pr-3 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none font-mono"
+                  />
+                  <Key className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPinChangeModalOpen(false);
+                    setPinChangeErrorMsg(null);
+                    setPinChangeForm({ current_pin: '', admin_password: '', new_pin: '', confirm_pin: '' });
+                  }}
+                  className="px-3.5 py-2 border border-[#E8DCCE] rounded-xl text-xs font-bold text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  రద్దు (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPin}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-50 transition-all"
+                >
+                  <Key className="w-3.5 h-3.5 text-amber-200" />
+                  <span>{isChangingPin ? 'నవీకరిస్తోంది...' : 'పిన్ భద్రపరచండి (Save PIN)'}</span>
                 </button>
               </div>
             </form>
