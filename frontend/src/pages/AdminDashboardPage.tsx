@@ -13,7 +13,7 @@ import { UpiQrCode } from '../components/UpiQrCode.js';
 import {
   Shield, Calendar, DollarSign, Users, BookOpen, Layers,
   Download, CheckCircle, AlertTriangle, Search, Plus, Trash2,
-  Lock, RefreshCw, FileText, Settings, History, CheckSquare,
+  Lock, Unlock, RefreshCw, FileText, Settings, History, CheckSquare,
   Edit, X, QrCode, Upload, Image as ImageIcon, Sparkles, Eye, EyeOff, Zap
 } from 'lucide-react';
 
@@ -93,8 +93,14 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // Settings State
+  // Settings State & 2-Step Payment Freeze Lock
   const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [isUpiUnlocked, setIsUpiUnlocked] = useState(false);
+  const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [adminUnlockPassword, setAdminUnlockPassword] = useState('');
+  const [unlockErrorMsg, setUnlockErrorMsg] = useState<string | null>(null);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [showUnlockPass, setShowUnlockPass] = useState(false);
   const [upiForm, setUpiForm] = useState({
     merchant_name: '',
     upi_id: '',
@@ -293,6 +299,38 @@ export const AdminDashboardPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleVerifyUnlockPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminUnlockPassword.trim()) {
+      setUnlockErrorMsg('దయచేసి అడ్మిన్ పాస్‌వర్డ్ నమోదు చేయండి');
+      return;
+    }
+
+    setIsVerifyingPassword(true);
+    setUnlockErrorMsg(null);
+    try {
+      await apiRequest('/settings/verify-admin-password', {
+        method: 'POST',
+        body: JSON.stringify({ password: adminUnlockPassword.trim() })
+      });
+      setIsUpiUnlocked(true);
+      setIsEditingUpi(true);
+      setIsUnlockModalOpen(false);
+      setAdminUnlockPassword('');
+      playTempleBell(0.4);
+    } catch (err: any) {
+      setUnlockErrorMsg(err.message || 'నమోదు చేసిన పాస్‌వర్డ్ సరిపోలలేదు. కేవలం అధీకృత అడ్మిన్ మాత్రమే అన్‌లాక్ చేయగలరు.');
+    } finally {
+      setIsVerifyingPassword(false);
+    }
+  };
+
+  const handleLockUpi = () => {
+    setIsEditingUpi(false);
+    setIsUpiUnlocked(false);
+    loadSettings();
+  };
+
   const handleSaveUpiConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -300,11 +338,12 @@ export const AdminDashboardPage: React.FC = () => {
         method: 'PUT',
         body: JSON.stringify(upiForm)
       });
-      alert('Temple UPI Merchant Details updated successfully!');
+      alert('ఆలయ మర్చంట్ యూపీఐ వివరాలు విజయవంతంగా భద్రపరచబడ్డాయి మరియు లాక్ చేయబడ్డాయి!');
       setIsEditingUpi(false);
+      setIsUpiUnlocked(false);
       loadSettings();
     } catch (err: any) {
-      alert(err.message || 'Failed to update UPI settings');
+      alert(err.message || 'యూపీఐ వివరాలు నవీకరించడం విఫలమైంది');
     }
   };
 
@@ -2529,21 +2568,75 @@ export const AdminDashboardPage: React.FC = () => {
               <div className="flex items-center justify-between border-b border-[#E8DCCE] pb-3">
                 <div className="flex items-center gap-2">
                   <QrCode className="w-4 h-4 text-[#C86A1B]" />
-                  <h3 className="font-bold text-sm text-[#7A1C23]">Merchant UPI Settings</h3>
+                  <h3 className="font-bold text-sm text-[#7A1C23]">మర్చంట్ యూపీఐ & స్టాండీ క్యూఆర్</h3>
                 </div>
-                {!isEditingUpi && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingUpi(true)}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-[#FAF5EC] border border-[#E8DCCE] text-[#7A1C23] rounded text-xs font-semibold hover:bg-[#F3ECE0]"
-                  >
-                    <Edit className="w-3 h-3 text-[#C86A1B]" />
-                    Edit UPI Details
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!isUpiUnlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUnlockModalOpen(true);
+                        setUnlockErrorMsg(null);
+                        setAdminUnlockPassword('');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
+                      title="అడ్మిన్ పాస్‌వర్డ్ ద్వారా చెల్లింపు చిత్రాన్ని అన్‌లాక్ చేయండి"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-200" />
+                      <span>అన్‌లాక్ చేయండి (Unlock)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleLockUpi}
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all shadow-2xs"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>లాక్ చేయండి (Re-Lock)</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {isEditingUpi ? (
+              {!isUpiUnlocked ? (
+                <div className="p-3 bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs text-emerald-950">
+                    <Shield className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <div>
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>🔒 చెల్లింపు చిత్రం ఫ్రీజ్ చేయబడింది (Tamper-Proof Locked)</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                          రక్షిత స్థితి
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-600 mt-0.5">
+                        ఆలయ నిధుల భద్రత దృష్ట్యా ఈ చిత్రాన్ని కేవలం అడ్మిన్ పాస్‌వర్డ్ ధృవీకరణతో మాత్రమే మార్చగలరు.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs text-amber-950">
+                    <Unlock className="w-4 h-4 text-amber-700 shrink-0" />
+                    <div>
+                      <div className="font-bold">🔓 చిత్రం మార్పునకు అన్‌లాక్ చేయబడింది (Edit Unlocked)</div>
+                      <div className="text-[11px] text-amber-800 mt-0.5">
+                        వివరాలు సేవ్ చేయగానే లేదా రద్దు చేయగానే చిత్రం తిరిగి ఆటోమేటిక్‌గా లాక్ చేయబడుతుంది.
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLockUpi}
+                    className="px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-amber-100 shrink-0"
+                  >
+                    మరలా లాక్ చేయండి
+                  </button>
+                </div>
+              )}
+
+              {isEditingUpi && isUpiUnlocked ? (
                 <form onSubmit={handleSaveUpiConfig} className="space-y-3 text-xs">
                   <div>
                     <label className="block font-semibold text-gray-700 mb-1">
@@ -2636,16 +2729,17 @@ export const AdminDashboardPage: React.FC = () => {
                   <div className="flex justify-end gap-2 pt-2 border-t border-[#E8DCCE]">
                     <button
                       type="button"
-                      onClick={() => setIsEditingUpi(false)}
-                      className="px-3 py-1.5 border border-[#E8DCCE] rounded text-gray-600 bg-white hover:bg-gray-50"
+                      onClick={handleLockUpi}
+                      className="px-3.5 py-1.5 border border-[#E8DCCE] rounded-lg text-gray-600 bg-white hover:bg-gray-50 font-bold"
                     >
-                      రద్దు
+                      రద్దు & లాక్ చేయండి
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded font-semibold shadow-xs"
+                      className="px-4 py-1.5 bg-[#7A1C23] hover:bg-[#5C1217] text-white rounded-lg font-bold shadow-xs flex items-center gap-1.5"
                     >
-                      Save UPI Configuration
+                      <Lock className="w-3.5 h-3.5 text-amber-200" />
+                      <span>సేవ్ చేసి లాక్ చేయండి</span>
                     </button>
                   </div>
                 </form>
@@ -2878,6 +2972,97 @@ export const AdminDashboardPage: React.FC = () => {
                 Confirm రద్దుlation
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* 2-Step Freeze: Admin Password Verification Modal to Unlock Payment Picture */}
+      {isUnlockModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#E8DCCE] p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setIsUnlockModalOpen(false);
+                setAdminUnlockPassword('');
+                setUnlockErrorMsg(null);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-md"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-[#E8DCCE] pb-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7A1C23] to-[#5C1217] text-white flex items-center justify-center font-bold text-lg shadow-2xs">
+                🔒
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-[#7A1C23] font-serif">
+                  చెల్లింపు చిత్ర భద్రత & అన్‌లాక్
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Verify Master Admin Password to modify QR Standee
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed bg-[#FAF5EC] p-3 rounded-xl border border-[#E8DCCE]">
+              ఈ క్యూఆర్ కోడ్ ద్వారా భక్తుల నిధులు నేరుగా ఆలయ అధికారిక బ్యాంకు ఖాతాకు జమ అవుతాయి. అనధికారిక లేదా పొరపాటు మార్పులను నిరోధించడానికి దయచేసి మీ అడ్మిన్ పాస్‌వర్డ్ నమోదు చేసి అన్‌లాక్ చేయండి.
+            </p>
+
+            {unlockErrorMsg && (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{unlockErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyUnlockPassword} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  అడ్మిన్ పాస్‌వర్డ్ (Admin Password) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUnlockPass ? 'text' : 'password'}
+                    required
+                    autoFocus
+                    value={adminUnlockPassword}
+                    onChange={(e) => setAdminUnlockPassword(e.target.value)}
+                    placeholder="మీ అడ్మిన్ పాస్‌వర్డ్ నమోదు చేయండి..."
+                    className="w-full pl-9 pr-10 py-2 border border-[#E8DCCE] rounded-xl text-xs bg-white text-[#2D2520] focus:ring-2 focus:ring-[#C86A1B] focus:outline-none"
+                  />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <button
+                    type="button"
+                    onClick={() => setShowUnlockPass(!showUnlockPass)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {showUnlockPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUnlockModalOpen(false);
+                    setAdminUnlockPassword('');
+                    setUnlockErrorMsg(null);
+                  }}
+                  className="px-3.5 py-2 border border-[#E8DCCE] rounded-xl text-xs font-bold text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  రద్దు (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingPassword}
+                  className="px-4 py-2 bg-gradient-to-r from-[#7A1C23] to-[#5C1217] hover:brightness-110 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-50 transition-all"
+                >
+                  <Unlock className="w-3.5 h-3.5 text-amber-200" />
+                  <span>{isVerifyingPassword ? 'ధృవీకరిస్తోంది...' : 'ధృవీకరించండి & అన్‌లాక్ చేయండి'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
